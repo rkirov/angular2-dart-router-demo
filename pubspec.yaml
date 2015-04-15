@@ -1,0 +1,4 @@
+name: hello_ng2
+dependencies:
+  angular2: any
+  browser: any
