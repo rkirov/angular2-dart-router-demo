@@ -1,0 +1,10 @@
+library _analyzer;
+import "web/src/compiler/compiler_benchmark.dart" as mod0;
+import "web/src/naive_infinite_scroll/app.dart" as mod1;
+import "web/src/naive_infinite_scroll/cells.dart" as mod2;
+import "web/src/naive_infinite_scroll/common.dart" as mod3;
+import "web/src/naive_infinite_scroll/index.dart" as mod4;
+import "web/src/naive_infinite_scroll/random_data.dart" as mod5;
+import "web/src/naive_infinite_scroll/scroll_area.dart" as mod6;
+import "web/src/naive_infinite_scroll/scroll_item.dart" as mod7;
+import "web/src/tree/tree_benchmark.dart" as mod8;

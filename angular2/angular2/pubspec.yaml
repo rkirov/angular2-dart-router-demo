@@ -1,0 +1,31 @@
+name: angular2
+version: 2.0.0-alpha.21
+authors:
+- 0 <Alex Eagle <alexeagle@google.com>>
+- 1 <Chirayu Krishnappa <chirayu@google.com>>
+- 2 <Jeff Cross <crossj@google.com>>
+- 3 <Misko Hevery <misko@google.com>>
+- 4 <Rado Kirov <radokirov@google.com>>
+- 5 <Tobias Bosch <tbosch@google.com>>
+- 6 <Victor Savkin <vsavkin@google.com>>
+- 7 <Yegor Jbanov <yjbanov@google.com>>
+description: Angular 2 for Dart - a web framework for modern web apps
+homepage: https://github.com/angular/angular
+environment:
+  sdk: '>=1.9.0-dev.8.0'
+dependencies:
+  analyzer: '^0.24.4'
+  barback: '^0.15.2+2'
+  code_transformers: '^0.2.8'
+  dart_style: '^0.1.3'
+  html: '^0.12.0'
+  logging: '>=0.9.0 <0.11.0'
+  source_span: '^1.0.0'
+  stack_trace: '^1.1.1'
+dev_dependencies:
+  guinness: "^0.1.17"
+transformers:
+- angular2
+- $dart2js:
+    commandLineOptions:
+    - --show-package-warnings

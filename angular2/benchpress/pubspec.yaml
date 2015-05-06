@@ -1,0 +1,24 @@
+name: benchpress
+version: 2.0.0-alpha.21
+authors:
+- 0 <Alex Eagle <alexeagle@google.com>>
+- 1 <Chirayu Krishnappa <chirayu@google.com>>
+- 2 <Jeff Cross <crossj@google.com>>
+- 3 <Misko Hevery <misko@google.com>>
+- 4 <Rado Kirov <radokirov@google.com>>
+- 5 <Tobias Bosch <tbosch@google.com>>
+- 6 <Victor Savkin <vsavkin@google.com>>
+- 7 <Yegor Jbanov <yjbanov@google.com>>
+description: Benchpress - a framework for e2e performance tests
+homepage: https://github.com/angular/angular
+environment:
+  sdk: '>=1.9.0-dev.8.0'
+dependencies:
+  stack_trace: '^1.1.1'
+  angular2: '^2.0.0-alpha.21'
+  webdriver: '^0.9.0'
+dependency_overrides:
+  angular2:
+    path: ../angular2
+dev_dependencies:
+  guinness: '^0.1.17'
