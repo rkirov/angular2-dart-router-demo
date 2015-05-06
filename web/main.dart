@@ -1,33 +1,54 @@
 import 'package:angular2/angular2.dart';
+import 'package:angular2/router.dart';
+import 'package:angular2/di.dart' show bind;
+import 'package:router_demo/components/home/home.dart';
+import 'dart:html';
 
 import 'package:angular2/src/reflection/reflection.dart' show reflector;
 import 'package:angular2/src/reflection/reflection_capabilities.dart' show ReflectionCapabilities;
-import 'package:hello_ng2/cmp.dart' show Test;
 
 @Component(
-    selector: 'hello-app',
-    injectables: const [GreetingService])
+  selector: 'foo'
+)
 @View(
-    template: '''<div class=\"greeting\">{{greeting}} <span>world</span>!</div><test></test>''',
-    directives: const [Test])
-class HelloCmp {
-  String greeting;
-  HelloCmp(GreetingService service) {
-    this.greeting = service.greeting;
-  }
-  changeGreeting() {
-    this.greeting = 'howdy';
+  template: 'foo {{id}}'
+)
+class FooCmp {
+  String id;
+  FooCmp(RouteParams pr) {
+    id = pr.get('id');
+    print(id);
   }
 }
 
-class GreetingService {
-  String greeting;
-  GreetingService() {
-    this.greeting = 'hello';
+@Component(
+  selector: 'my-app'
+)
+@View(
+  template: '<button (click)="go()">Go</button><router-outlet></router-outlet>',
+  directives: const [RouterOutlet]
+)
+@RouteConfig(const [const {
+  'path': '/',
+  'component': HomeComp
+},
+const {
+  'path': '/:id',
+  'component': FooCmp
+}
+])
+class AppComp {
+  Router r;
+  AppComp(Router r) {
+    this.r = r;
+  }
+  go() {
+    r.navigate('/3');
   }
 }
 
 main() {
   reflector.reflectionCapabilities = new ReflectionCapabilities();
-  bootstrap(HelloCmp);
+
+  bootstrap(AppComp, routerInjectables);
 }

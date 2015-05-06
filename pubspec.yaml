@@ -1,4 +1,5 @@
-name: hello_ng2
+name: router_demo
 dependencies:
-  angular2: any
+  angular2:
+    path: 'angular2/angular2/'
   browser: any
