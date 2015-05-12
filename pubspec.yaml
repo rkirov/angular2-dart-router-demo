@@ -1,5 +1,5 @@
 name: router_demo
 dependencies:
   angular2:
-    path: 'angular2/angular2/'
+    path: 'angular2'
   browser: any

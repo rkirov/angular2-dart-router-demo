@@ -1,0 +1,243 @@
+library angular2.test.router.outlet_spec;
+
+import "package:angular2/test_lib.dart"
+    show
+        AsyncTestCompleter,
+        beforeEach,
+        ddescribe,
+        xdescribe,
+        describe,
+        el,
+        expect,
+        iit,
+        inject,
+        beforeEachBindings,
+        it,
+        xit;
+import "package:angular2/test.dart" show TestBed;
+import "package:angular2/di.dart" show Injector, bind;
+import "package:angular2/src/core/annotations_impl/annotations.dart"
+    show Component;
+import "package:angular2/src/core/annotations_impl/view.dart" show View;
+import "package:angular2/src/router/router.dart" show RootRouter;
+import "package:angular2/src/router/pipeline.dart" show Pipeline;
+import "package:angular2/router.dart"
+    show Router, RouterOutlet, RouterLink, RouteParams;
+import "package:angular2/src/router/route_config_impl.dart" show RouteConfig;
+import "package:angular2/src/dom/dom_adapter.dart" show DOM;
+import "package:angular2/src/mock/location_mock.dart" show SpyLocation;
+import "package:angular2/src/router/location.dart" show Location;
+import "package:angular2/src/router/route_registry.dart" show RouteRegistry;
+import "package:angular2/src/core/compiler/directive_metadata_reader.dart"
+    show DirectiveMetadataReader;
+
+var teamCmpCount;
+main() {
+  describe("Outlet Directive", () {
+    var ctx, tb, view, rtr, location;
+    beforeEachBindings(() => [
+      Pipeline,
+      RouteRegistry,
+      DirectiveMetadataReader,
+      bind(Location).toClass(SpyLocation),
+      bind(Router).toFactory((registry, pipeline, location) {
+        return new RootRouter(registry, pipeline, location, MyComp);
+      }, [RouteRegistry, Pipeline, Location])
+    ]);
+    beforeEach(inject([TestBed, Router, Location], (testBed, router, loc) {
+      tb = testBed;
+      ctx = new MyComp();
+      rtr = router;
+      location = loc;
+      teamCmpCount = 0;
+    }));
+    compile([String template = "<router-outlet></router-outlet>"]) {
+      tb.overrideView(MyComp, new View(
+          template: ("<div>" + template + "</div>"),
+          directives: [RouterOutlet, RouterLink]));
+      return tb.createView(MyComp, context: ctx).then((v) {
+        view = v;
+      });
+    }
+    it("should work in a simple case", inject([AsyncTestCompleter], (async) {
+      compile()
+          .then((_) => rtr.config({"path": "/test", "component": HelloCmp}))
+          .then((_) => rtr.navigate("/test"))
+          .then((_) {
+        view.detectChanges();
+        expect(view.rootNodes).toHaveText("hello");
+        async.done();
+      });
+    }));
+    it("should navigate between components with different parameters", inject(
+        [AsyncTestCompleter], (async) {
+      compile()
+          .then(
+              (_) => rtr.config({"path": "/user/:name", "component": UserCmp}))
+          .then((_) => rtr.navigate("/user/brian"))
+          .then((_) {
+        view.detectChanges();
+        expect(view.rootNodes).toHaveText("hello brian");
+      }).then((_) => rtr.navigate("/user/igor")).then((_) {
+        view.detectChanges();
+        expect(view.rootNodes).toHaveText("hello igor");
+        async.done();
+      });
+    }));
+    it("should work with child routers", inject([AsyncTestCompleter], (async) {
+      compile("outer { <router-outlet></router-outlet> }")
+          .then((_) => rtr.config({"path": "/a", "component": ParentCmp}))
+          .then((_) => rtr.navigate("/a/b"))
+          .then((_) {
+        view.detectChanges();
+        expect(view.rootNodes).toHaveText("outer { inner { hello } }");
+        async.done();
+      });
+    }));
+    it("should work with sibling routers", inject([AsyncTestCompleter],
+        (async) {
+      compile("left { <router-outlet name=\"left\"></router-outlet> } | right { <router-outlet name=\"right\"></router-outlet> }")
+          .then((_) => rtr
+              .config({"path": "/ab", "components": {"left": A, "right": B}}))
+          .then((_) => rtr
+              .config({"path": "/ba", "components": {"left": B, "right": A}}))
+          .then((_) => rtr.navigate("/ab"))
+          .then((_) {
+        view.detectChanges();
+        expect(view.rootNodes).toHaveText("left { A } | right { B }");
+      }).then((_) => rtr.navigate("/ba")).then((_) {
+        view.detectChanges();
+        expect(view.rootNodes).toHaveText("left { B } | right { A }");
+        async.done();
+      });
+    }));
+    it("should work with redirects", inject([
+      AsyncTestCompleter,
+      Location
+    ], (async, location) {
+      compile()
+          .then((_) =>
+              rtr.config({"path": "/original", "redirectTo": "/redirected"}))
+          .then((_) => rtr.config({"path": "/redirected", "component": A}))
+          .then((_) => rtr.navigate("/original"))
+          .then((_) {
+        view.detectChanges();
+        expect(view.rootNodes).toHaveText("A");
+        expect(location.urlChanges).toEqual(["/redirected"]);
+        async.done();
+      });
+    }));
+    it("should generate link hrefs without params", inject([AsyncTestCompleter],
+        (async) {
+      compile("<a href=\"hello\" router-link=\"user\"></a>")
+          .then((_) =>
+              rtr.config({"path": "/user", "component": UserCmp, "as": "user"}))
+          .then((_) => rtr.navigate("/a/b"))
+          .then((_) {
+        view.detectChanges();
+        expect(DOM.getAttribute(view.rootNodes[0].childNodes[0], "href"))
+            .toEqual("/user");
+        async.done();
+      });
+    }));
+    it("should reuse common parent components", inject([
+      AsyncTestCompleter,
+      Location
+    ], (async, location) {
+      compile()
+          .then((_) => rtr.config({"path": "/team/:id", "component": TeamCmp}))
+          .then((_) => rtr.navigate("/team/angular/user/rado"))
+          .then((_) {
+        view.detectChanges();
+        expect(teamCmpCount).toBe(1);
+        expect(view.rootNodes).toHaveText("team angular { hello rado }");
+      }).then((_) => rtr.navigate("/team/angular/user/victor")).then((_) {
+        view.detectChanges();
+        expect(teamCmpCount).toBe(1);
+        expect(view.rootNodes).toHaveText("team angular { hello victor }");
+        async.done();
+      });
+    }));
+    it("should generate link hrefs with params", inject([AsyncTestCompleter],
+        (async) {
+      ctx.name = "brian";
+      compile("<a href=\"hello\" router-link=\"user\" [router-params]=\"{name: name}\">{{name}}</a>")
+          .then((_) => rtr.config(
+              {"path": "/user/:name", "component": UserCmp, "as": "user"}))
+          .then((_) => rtr.navigate("/a/b"))
+          .then((_) {
+        view.detectChanges();
+        expect(view.rootNodes).toHaveText("brian");
+        expect(DOM.getAttribute(view.rootNodes[0].childNodes[0], "href"))
+            .toEqual("/user/brian");
+        async.done();
+      });
+    }));
+    it("should generate link hrefs without params", inject([AsyncTestCompleter],
+        (async) {
+      compile("<a href=\"hello\" router-link=\"user\"></a>")
+          .then((_) =>
+              rtr.config({"path": "/user", "component": UserCmp, "as": "user"}))
+          .then((_) => rtr.navigate("/a/b"))
+          .then((_) {
+        view.detectChanges();
+        var anchorEl = view.rootNodes[0].childNodes[0];
+        expect(DOM.getAttribute(anchorEl, "href")).toEqual("/user");
+        var dispatchedEvent = DOM.createMouseEvent("click");
+        DOM.dispatchEvent(anchorEl, dispatchedEvent);
+        expect(dispatchedEvent.defaultPrevented).toBe(true);
+        // router navigation is async.
+        rtr.subscribe((_) {
+          expect(location.urlChanges).toEqual(["/user"]);
+          async.done();
+        });
+      });
+    }));
+  });
+}
+@Component(selector: "hello-cmp")
+@View(template: "{{greeting}}")
+class HelloCmp {
+  String greeting;
+  HelloCmp() {
+    this.greeting = "hello";
+  }
+}
+@Component(selector: "a-cmp")
+@View(template: "A")
+class A {}
+@Component(selector: "b-cmp")
+@View(template: "B")
+class B {}
+@Component(selector: "user-cmp")
+@View(template: "hello {{user}}")
+class UserCmp {
+  String user;
+  UserCmp(RouteParams params) {
+    this.user = params.get("name");
+  }
+}
+@Component(selector: "parent-cmp")
+@View(
+    template: "inner { <router-outlet></router-outlet> }",
+    directives: const [RouterOutlet])
+@RouteConfig(const [const {"path": "/b", "component": HelloCmp}])
+class ParentCmp {
+  ParentCmp() {}
+}
+@Component(selector: "team-cmp")
+@View(
+    template: "team {{id}} { <router-outlet></router-outlet> }",
+    directives: const [RouterOutlet])
+@RouteConfig(const [const {"path": "/user/:name", "component": UserCmp}])
+class TeamCmp {
+  String id;
+  TeamCmp(RouteParams params) {
+    this.id = params.get("id");
+    teamCmpCount += 1;
+  }
+}
+@Component(selector: "my-comp")
+class MyComp {
+  var name;
+}

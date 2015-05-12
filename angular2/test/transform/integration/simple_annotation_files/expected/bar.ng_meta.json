@@ -1,0 +1,15 @@
+{
+  "MyComponent": {
+    "id": "MyComponent",
+    "selector": "[soup]",
+    "compileChildren": true,
+    "hostListeners": {},
+    "hostProperties": {},
+    "hostAttributes": {},
+    "hostActions": null,
+    "properties": {},
+    "readAttributes": [],
+    "type": 1,
+    "version": 1
+  }
+}

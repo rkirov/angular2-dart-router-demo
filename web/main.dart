@@ -1,8 +1,6 @@
 import 'package:angular2/angular2.dart';
 import 'package:angular2/router.dart';
-import 'package:angular2/di.dart' show bind;
 import 'package:router_demo/components/home/home.dart';
-import 'dart:html';
 
 import 'package:angular2/src/reflection/reflection.dart' show reflector;
 import 'package:angular2/src/reflection/reflection_capabilities.dart' show ReflectionCapabilities;
@@ -22,33 +20,44 @@ class FooCmp {
 }
 
 @Component(
+  selector: 'bar'
+)
+@View(
+  template: 'bar'
+)
+class BarCmp {}
+
+@Component(
   selector: 'my-app'
 )
 @View(
-  template: '<button (click)="go()">Go</button><router-outlet></router-outlet>',
-  directives: const [RouterOutlet]
+  template: '<button (click)="go()">Go</button><router-outlet></router-outlet><a router-link="bar">link</a>',
+  directives: const [RouterOutlet, RouterLink]
 )
 @RouteConfig(const [const {
   'path': '/',
   'component': HomeComp
 },
 const {
-  'path': '/:id',
+  'path': 'foo/:id',
   'component': FooCmp
+},
+const {
+  'path': 'bar',
+  'component': BarCmp,
+  'as': 'bar'
 }
 ])
 class AppComp {
   Router r;
-  AppComp(Router r) {
-    this.r = r;
-  }
+  AppComp(Router this.r);
+
   go() {
-    r.navigate('/3');
+    r.navigate('bar');
   }
 }
 
 main() {
   reflector.reflectionCapabilities = new ReflectionCapabilities();
-
   bootstrap(AppComp, routerInjectables);
 }
