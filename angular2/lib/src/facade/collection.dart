@@ -130,9 +130,10 @@ class ListWrapper {
     l.add(e);
   }
   static List concat(List a, List b) {
-    return []
-      ..addAll(a)
-      ..addAll(b);
+    return new List()
+      ..length = a.length + b.length
+      ..setRange(0, a.length, a)
+      ..setRange(a.length, a.length + b.length, b);
   }
   static bool isList(l) => l is List;
   static void insert(List l, int index, value) {

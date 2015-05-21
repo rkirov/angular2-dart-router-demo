@@ -2,12 +2,7 @@ library angular2.src.change_detection.change_detector_ref;
 
 import "interfaces.dart" show ChangeDetector;
 import "constants.dart" show CHECK_ONCE, DETACHED, CHECK_ALWAYS;
-// HACK: workaround for Traceur behavior.
 
-// It expects all transpiled modules to contain this marker.
-
-// TODO: remove this when we no longer use traceur
-var ___esModule = true;
 /**
  * Controls change detection.
  *

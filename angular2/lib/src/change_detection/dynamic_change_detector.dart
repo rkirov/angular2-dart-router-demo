@@ -25,12 +25,7 @@ import "proto_record.dart"
         RECORD_TYPE_INTERPOLATE;
 import "exceptions.dart"
     show ExpressionChangedAfterItHasBeenChecked, ChangeDetectionError;
-// HACK: workaround for Traceur behavior.
 
-// It expects all transpiled modules to contain this marker.
-
-// TODO: remove this when we no longer use traceur
-var ___esModule = true;
 class DynamicChangeDetector extends AbstractChangeDetector {
   String changeControlStrategy;
   dynamic dispatcher;
@@ -153,7 +148,7 @@ class DynamicChangeDetector extends AbstractChangeDetector {
       } else {
         return this._referenceCheck(proto, throwOnChange);
       }
-    } catch (e) {
+    } catch (e, e_stack) {
       throw new ChangeDetectionError(proto, e);
     }
   }

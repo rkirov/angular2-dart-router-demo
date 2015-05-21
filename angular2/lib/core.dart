@@ -7,7 +7,6 @@
 library angular2.core;
 
 export "src/core/annotations/visibility.dart";
-export "src/core/compiler/interfaces.dart";
 export "src/core/annotations/view.dart";
 export "src/core/application.dart";
 export "src/core/application_tokens.dart";

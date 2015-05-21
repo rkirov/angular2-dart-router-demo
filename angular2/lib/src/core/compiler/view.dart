@@ -9,7 +9,6 @@ import "package:angular2/change_detection.dart"
         ChangeDispatcher,
         ProtoChangeDetector,
         ChangeDetector,
-        ChangeRecord,
         BindingRecord,
         DirectiveRecord,
         DirectiveIndex,
@@ -24,6 +23,7 @@ import "element_binder.dart" show ElementBinder;
 import "package:angular2/src/facade/lang.dart"
     show int, isPresent, isBlank, BaseException;
 import "package:angular2/src/render/api.dart" as renderApi;
+import "package:angular2/src/render/api.dart" show EventDispatcher;
 
 class AppViewContainer {
   List<AppView> views;
@@ -36,7 +36,9 @@ class AppViewContainer {
  * Const of making objects: http://jsperf.com/instantiate-size-of-object
  *
  */
-class AppView implements ChangeDispatcher {
+class AppView implements ChangeDispatcher, EventDispatcher {
+  renderApi.Renderer renderer;
+  AppProtoView proto;
   renderApi.RenderViewRef render;
   /// This list matches the _nodes list. It is sparse, since only Elements have ElementInjector
   List<ElementInjector> rootElementInjectors;
@@ -46,11 +48,9 @@ class AppView implements ChangeDispatcher {
   /// Host views that were added by an imperative view.
 
   /// This is a dynamically growing / shrinking array.
-  List<AppView> inPlaceHostViews;
+  List<AppView> freeHostViews;
   List<AppViewContainer> viewContainers;
   List<PreBuiltObjects> preBuiltObjects;
-  AppProtoView proto;
-  renderApi.Renderer renderer;
   /**
    * The context against which data-binding expressions in this view are evaluated against.
    * This is always a component instance.
@@ -62,9 +62,8 @@ class AppView implements ChangeDispatcher {
    * `<li template="for #item of items">`, where "player" and "item" are locals, respectively.
    */
   Locals locals;
-  AppView(renderApi.Renderer renderer, AppProtoView proto, Map protoLocals) {
+  AppView(this.renderer, this.proto, Map<String, dynamic> protoLocals) {
     this.render = null;
-    this.proto = proto;
     this.changeDetector = null;
     this.elementInjectors = null;
     this.rootElementInjectors = null;
@@ -74,12 +73,12 @@ class AppView implements ChangeDispatcher {
     this.preBuiltObjects = null;
     this.context = null;
     this.locals = new Locals(null, MapWrapper.clone(protoLocals));
-    this.renderer = renderer;
-    this.inPlaceHostViews = [];
+    this.freeHostViews = [];
   }
-  init(ChangeDetector changeDetector, List elementInjectors,
-      List rootElementInjectors, List preBuiltObjects,
-      List componentChildViews) {
+  init(ChangeDetector changeDetector, List<ElementInjector> elementInjectors,
+      List<ElementInjector> rootElementInjectors,
+      List<PreBuiltObjects> preBuiltObjects,
+      List<AppView> componentChildViews) {
     this.changeDetector = changeDetector;
     this.elementInjectors = elementInjectors;
     this.rootElementInjectors = rootElementInjectors;
@@ -160,7 +159,7 @@ class AppView implements ChangeDispatcher {
         }
         var result = expr.eval(context, new Locals(this.locals, locals));
         if (isPresent(result)) {
-          allowDefaultBehavior = allowDefaultBehavior && result;
+          allowDefaultBehavior = allowDefaultBehavior && result == true;
         }
       });
     }
@@ -171,22 +170,19 @@ class AppView implements ChangeDispatcher {
  *
  */
 class AppProtoView {
-  List<ElementBinder> elementBinders;
-  ProtoChangeDetector protoChangeDetector;
-  Map variableBindings;
-  Map protoLocals;
-  List bindings;
-  List variableNames;
   renderApi.RenderProtoViewRef render;
-  AppProtoView(renderApi.RenderProtoViewRef render,
-      ProtoChangeDetector protoChangeDetector, Map variableBindings,
-      Map protoLocals, List variableNames) {
-    this.render = render;
+  ProtoChangeDetector protoChangeDetector;
+  Map<String, String> variableBindings;
+  List<ElementBinder> elementBinders;
+  Map<String, dynamic> protoLocals;
+  AppProtoView(this.render, this.protoChangeDetector, this.variableBindings) {
     this.elementBinders = [];
-    this.variableBindings = variableBindings;
-    this.protoLocals = protoLocals;
-    this.variableNames = variableNames;
-    this.protoChangeDetector = protoChangeDetector;
+    this.protoLocals = MapWrapper.create();
+    if (isPresent(variableBindings)) {
+      MapWrapper.forEach(variableBindings, (templateName, _) {
+        MapWrapper.set(this.protoLocals, templateName, null);
+      });
+    }
   }
   ElementBinder bindElement(ElementBinder parent, int distanceToParent,
       ProtoElementInjector protoElementInjector,

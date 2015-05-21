@@ -1,13 +1,12 @@
 library angular2.src.core.testability.testability;
 
-import "package:angular2/src/di/annotations_impl.dart" show Injectable;
+import "package:angular2/di.dart" show Injectable;
 import "package:angular2/src/dom/dom_adapter.dart" show DOM;
 import "package:angular2/src/facade/collection.dart"
     show Map, MapWrapper, List, ListWrapper;
 import "package:angular2/src/facade/lang.dart"
     show StringWrapper, isBlank, BaseException;
-import "package:angular2/src/core/testability/get_testability.dart"
-    as getTestabilityModule;
+import "get_testability.dart" as getTestabilityModule;
 
 /**
  * The Testability service provides testing hooks that can be accessed from
@@ -17,7 +16,7 @@ import "package:angular2/src/core/testability/get_testability.dart"
 @Injectable()
 class Testability {
   num _pendingCount;
-  List _callbacks;
+  List<Function> _callbacks;
   Testability() {
     this._pendingCount = 0;
     this._callbacks = ListWrapper.create();
@@ -45,14 +44,14 @@ class Testability {
   num getPendingCount() {
     return this._pendingCount;
   }
-  List findBindings(using, String binding, bool exactMatch) {
+  List<dynamic> findBindings(using, String binding, bool exactMatch) {
     // TODO(juliemr): implement.
     return [];
   }
 }
 @Injectable()
 class TestabilityRegistry {
-  Map _applications;
+  Map<dynamic, Testability> _applications;
   TestabilityRegistry() {
     this._applications = MapWrapper.create();
     getTestabilityModule.GetTestability.addToWindow(this);

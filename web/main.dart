@@ -39,11 +39,11 @@ class BarCmp {}
   'component': HomeComp
 },
 const {
-  'path': 'foo/:id',
+  'path': '/foo/:id',
   'component': FooCmp
 },
 const {
-  'path': 'bar',
+  'path': '/bar',
   'component': BarCmp,
   'as': 'bar'
 }
@@ -53,11 +53,12 @@ class AppComp {
   AppComp(Router this.r);
 
   go() {
-    r.navigate('bar');
+    r.navigate('/bar');
   }
 }
 
 main() {
+  assert(false);
   reflector.reflectionCapabilities = new ReflectionCapabilities();
   bootstrap(AppComp, routerInjectables);
 }

@@ -38,7 +38,7 @@ main() {
       return new ViewRef(view);
     }
     createProtoView() {
-      return new AppProtoView(null, null, null, null, null);
+      return new AppProtoView(null, null, null);
     }
     createView() {
       return new AppView(null, createProtoView(), MapWrapper.create());

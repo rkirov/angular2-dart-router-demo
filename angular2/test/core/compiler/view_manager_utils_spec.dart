@@ -29,8 +29,8 @@ import "package:angular2/src/core/compiler/element_binder.dart"
     show ElementBinder;
 import "package:angular2/src/core/compiler/element_injector.dart"
     show DirectiveBinding, ElementInjector, PreBuiltObjects;
-import "package:angular2/src/core/compiler/directive_metadata_reader.dart"
-    show DirectiveMetadataReader;
+import "package:angular2/src/core/compiler/directive_resolver.dart"
+    show DirectiveResolver;
 import "package:angular2/src/core/annotations_impl/annotations.dart"
     show Component;
 import "package:angular2/src/core/compiler/view_manager_utils.dart"
@@ -39,14 +39,14 @@ import "package:angular2/src/core/compiler/view_manager_utils.dart"
 main() {
   // TODO(tbosch): add more tests here!
   describe("AppViewManagerUtils", () {
-    var metadataReader;
+    var directiveResolver;
     var utils;
     createInjector() {
       return new Injector([], null, false);
     }
     createDirectiveBinding(type) {
-      var meta = metadataReader.read(type);
-      return DirectiveBinding.createFromType(meta.type, meta.annotation);
+      var annotation = directiveResolver.resolve(type);
+      return DirectiveBinding.createFromType(type, annotation);
     }
     createEmptyElBinder() {
       return new ElementBinder(0, null, 0, null, null);
@@ -61,7 +61,7 @@ main() {
       if (isBlank(binders)) {
         binders = [];
       }
-      var res = new AppProtoView(null, null, null, null, null);
+      var res = new AppProtoView(null, null, null);
       res.elementBinders = binders;
       return res;
     }
@@ -96,8 +96,8 @@ main() {
       return view;
     }
     beforeEach(() {
-      metadataReader = new DirectiveMetadataReader();
-      utils = new AppViewManagerUtils(metadataReader);
+      directiveResolver = new DirectiveResolver();
+      utils = new AppViewManagerUtils(directiveResolver);
     });
     describe("hydrateDynamicComponentInElementInjector", () {
       it("should not allow to overwrite an existing component", () {
@@ -123,13 +123,11 @@ main() {
         hostView.componentChildViews = [componentView];
         // (() => () nonsense is required until our transpiler supports type casting
         var spyEi = (() => componentView.elementInjectors[0])();
-        spyEi
-            .spy("instantiateDirectives")
-            .andCallFake(log.fn("instantiateDirectives"));
+        spyEi.spy("hydrate").andCallFake(log.fn("hydrate"));
         var spyCd = (() => componentView.changeDetector)();
         spyCd.spy("hydrate").andCallFake(log.fn("hydrateCD"));
         utils.hydrateComponentView(hostView, 0);
-        expect(log.result()).toEqual("instantiateDirectives; hydrateCD");
+        expect(log.result()).toEqual("hydrate; hydrateCD");
       });
     });
     describe("shared hydrate functionality", () {
@@ -152,8 +150,7 @@ main() {
         });
         var shadowView = createView();
         utils.attachComponentView(hostView, 0, shadowView);
-        utils.attachAndHydrateInPlaceHostView(
-            null, null, hostView, createInjector());
+        utils.hydrateRootHostView(hostView, createInjector());
         expect(spyEventAccessor1.spy("subscribe")).toHaveBeenCalledWith(
             hostView, 0, dir);
         expect(spyEventAccessor2.spy("subscribe")).toHaveBeenCalledWith(
@@ -178,8 +175,7 @@ main() {
         });
         var shadowView = createView();
         utils.attachComponentView(hostView, 0, shadowView);
-        utils.attachAndHydrateInPlaceHostView(
-            null, null, hostView, createInjector());
+        utils.hydrateRootHostView(hostView, createInjector());
         expect(spyActionAccessor1.spy("subscribe")).toHaveBeenCalledWith(
             hostView, 0, dir);
         expect(spyActionAccessor2.spy("subscribe")).toHaveBeenCalledWith(
@@ -221,10 +217,25 @@ main() {
           () {
         createViews();
         utils.hydrateViewInContainer(parentView, 0, contextView, 0, 0, null);
-        expect(childView.rootElementInjectors[0].spy("instantiateDirectives"))
+        expect(childView.rootElementInjectors[0].spy("hydrate"))
             .toHaveBeenCalledWith(null,
                 contextView.elementInjectors[0].getHost(),
                 childView.preBuiltObjects[0]);
+      });
+    });
+    describe("hydrateRootHostView", () {
+      var hostView;
+      createViews() {
+        var hostPv = createProtoView([createComponentElBinder()]);
+        hostView = createView(hostPv);
+      }
+      it("should instantiate the elementInjectors with the given injector and an empty host element injector",
+          () {
+        var injector = createInjector();
+        createViews();
+        utils.hydrateRootHostView(hostView, injector);
+        expect(hostView.rootElementInjectors[0].spy("hydrate"))
+            .toHaveBeenCalledWith(injector, null, hostView.preBuiltObjects[0]);
       });
     });
   });

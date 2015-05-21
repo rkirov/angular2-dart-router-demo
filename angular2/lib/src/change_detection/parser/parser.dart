@@ -42,12 +42,7 @@ import "ast.dart"
         FunctionCall,
         TemplateBinding,
         ASTWithSource;
-// HACK: workaround for Traceur behavior.
 
-// It expects all transpiled modules to contain this marker.
-
-// TODO: remove this when we no longer use traceur
-var ___esModule = true;
 var _implicitReceiver = new ImplicitReceiver();
 // TODO(tbosch): Cannot make this const/final right now because of the transpiler...
 var INTERPOLATION_REGEXP = RegExpWrapper.create("\\{\\{(.*?)\\}\\}");
@@ -472,9 +467,17 @@ class _ParseAST {
   }
   parseTemplateBindings() {
     var bindings = [];
+    var prefix = null;
     while (this.index < this.tokens.length) {
       bool keyIsVar = this.optionalKeywordVar();
       var key = this.expectTemplateBindingKey();
+      if (!keyIsVar) {
+        if (prefix == null) {
+          prefix = key;
+        } else {
+          key = prefix + "-" + key;
+        }
+      }
       this.optionalCharacter($COLON);
       var name = null;
       var expression = null;

@@ -3,7 +3,7 @@
 // https://github.com/webcomponents/webcomponentsjs/blob/master/src/HTMLImports/path.js
 library angular2.src.render.dom.shadow_dom.style_url_resolver;
 
-import "package:angular2/src/di/annotations_impl.dart" show Injectable;
+import "package:angular2/di.dart" show Injectable;
 import "package:angular2/src/facade/lang.dart"
     show RegExp, RegExpWrapper, StringWrapper;
 import "package:angular2/src/services/url_resolver.dart" show UrlResolver;

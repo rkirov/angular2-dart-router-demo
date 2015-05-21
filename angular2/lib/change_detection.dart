@@ -20,7 +20,12 @@ export "src/change_detection/parser/locals.dart" show Locals;
 export "src/change_detection/exceptions.dart"
     show ExpressionChangedAfterItHasBeenChecked, ChangeDetectionError;
 export "src/change_detection/interfaces.dart"
-    show ProtoChangeDetector, ChangeDispatcher, ChangeDetector, ChangeDetection;
+    show
+        ProtoChangeDetector,
+        ChangeDispatcher,
+        ChangeDetector,
+        ChangeDetection,
+        ChangeDetectorDefinition;
 export "src/change_detection/constants.dart"
     show CHECK_ONCE, CHECK_ALWAYS, DETACHED, CHECKED, ON_PUSH, DEFAULT;
 export "src/change_detection/proto_change_detector.dart"
@@ -41,10 +46,6 @@ export "src/change_detection/change_detection.dart"
         defaultPipes,
         DynamicChangeDetection,
         JitChangeDetection,
+        PreGeneratedChangeDetection,
+        preGeneratedProtoDetectors,
         defaultPipeRegistry;
-// HACK: workaround for Traceur behavior.
-
-// It expects all transpiled modules to contain this marker.
-
-// TODO: remove this when we no longer use traceur
-var ___esModule = true;

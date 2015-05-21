@@ -20,7 +20,7 @@ var specialCharacters = [
 ];
 var escapeRe =
     RegExpWrapper.create("(\\" + specialCharacters.join("|\\") + ")", "g");
-escapeRegex(String string) {
+String escapeRegex(String string) {
   return StringWrapper.replaceAllMapped(string, escapeRe, (match) {
     return "\\" + match;
   });

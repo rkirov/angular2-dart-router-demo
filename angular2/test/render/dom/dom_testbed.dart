@@ -21,21 +21,19 @@ import "package:angular2/src/render/dom/view/view.dart"
     show resolveInternalDomView;
 import "package:angular2/test_lib.dart" show el, dispatchEvent;
 
-class TestView extends EventDispatcher {
+class TestView {
   DomView rawView;
   RenderViewRef viewRef;
   List events;
-  TestView(RenderViewRef viewRef) : super() {
-    /* super call moved to initializer */;
+  TestView(RenderViewRef viewRef) {
     this.viewRef = viewRef;
     this.rawView = resolveInternalDomView(viewRef);
     this.events = [];
   }
 }
-class LoggingEventDispatcher extends EventDispatcher {
+class LoggingEventDispatcher implements EventDispatcher {
   List log;
-  LoggingEventDispatcher(List log) : super() {
-    /* super call moved to initializer */;
+  LoggingEventDispatcher(List log) {
     this.log = log;
   }
   dispatchEvent(
@@ -77,8 +75,8 @@ class DomTestbed {
     return testView;
   }
   TestView createRootView(ProtoViewDto rootProtoView) {
-    var viewRef = this.renderer.createInPlaceHostView(
-        null, "#root", rootProtoView.render);
+    var viewRef =
+        this.renderer.createRootHostView(rootProtoView.render, "#root");
     this.renderer.hydrateView(viewRef);
     return this._createTestView(viewRef);
   }

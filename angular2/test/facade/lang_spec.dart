@@ -4,7 +4,7 @@ import "package:angular2/test_lib.dart"
     show describe, it, expect, beforeEach, ddescribe, iit, xit, el;
 import "package:angular2/src/facade/collection.dart" show ListWrapper;
 import "package:angular2/src/facade/lang.dart"
-    show isPresent, RegExpWrapper, RegExpMatcherWrapper;
+    show isPresent, RegExpWrapper, RegExpMatcherWrapper, StringWrapper;
 
 main() {
   describe("RegExp", () {
@@ -26,6 +26,21 @@ main() {
     it("should support const expressions both in TS and Dart", () {
       const numbers = const [1, 2, 3];
       expect(numbers).toEqual([1, 2, 3]);
+    });
+  });
+  describe("String", () {
+    var upper, lower;
+    beforeEach(() {
+      upper = "SOMETHING";
+      lower = "something";
+    });
+    it("should upper case a string", () {
+      var str = StringWrapper.toUpperCase(lower);
+      expect(str).toEqual(upper);
+    });
+    it("should lower case a string", () {
+      var str = StringWrapper.toLowerCase(upper);
+      expect(str).toEqual(lower);
     });
   });
 }

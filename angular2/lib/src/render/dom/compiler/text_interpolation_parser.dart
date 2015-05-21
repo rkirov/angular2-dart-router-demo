@@ -11,10 +11,9 @@ import "compile_control.dart" show CompileControl;
 /**
  * Parses interpolations in direct text child nodes of the current element.
  */
-class TextInterpolationParser extends CompileStep {
+class TextInterpolationParser implements CompileStep {
   Parser _parser;
-  TextInterpolationParser(Parser parser) : super() {
-    /* super call moved to initializer */;
+  TextInterpolationParser(Parser parser) {
     this._parser = parser;
   }
   process(

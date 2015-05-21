@@ -7,6 +7,7 @@ import "package:angular2/src/render/dom/compiler/view_splitter.dart"
     show ViewSplitter;
 import "package:angular2/src/render/dom/compiler/compile_pipeline.dart"
     show CompilePipeline;
+import "package:angular2/src/render/api.dart" show ProtoViewDto;
 import "package:angular2/src/dom/dom_adapter.dart" show DOM;
 import "package:angular2/change_detection.dart" show Lexer, Parser;
 
@@ -55,6 +56,8 @@ main() {
         expect(results[2].inheritedProtoView).not.toBe(null);
         expect(results[2].inheritedProtoView)
             .toBe(results[1].inheritedElementBinder.nestedProtoView);
+        expect(results[2].inheritedProtoView.type)
+            .toBe(ProtoViewDto.EMBEDDED_VIEW_TYPE);
         expect(DOM.getOuterHTML(results[2].inheritedProtoView.rootElement))
             .toEqual("<template>a</template>");
       });
@@ -142,14 +145,14 @@ main() {
     });
     describe("elements with *directive_name attribute", () {
       it("should replace the element with an empty <template> element", () {
-        var rootElement = el("<div><span *if></span></div>");
+        var rootElement = el("<div><span *ng-if></span></div>");
         var originalChild = rootElement.childNodes[0];
         var results = createPipeline().process(rootElement);
         expect(results[0].element).toBe(rootElement);
         expect(DOM.getOuterHTML(results[0].element)).toEqual(
-            "<div><template class=\"ng-binding\" if=\"\"></template></div>");
+            "<div><template class=\"ng-binding\" ng-if=\"\"></template></div>");
         expect(DOM.getOuterHTML(results[2].element))
-            .toEqual("<span *if=\"\"></span>");
+            .toEqual("<span *ng-if=\"\"></span>");
         expect(results[2].element).toBe(originalChild);
       });
       it("should mark the element as viewRoot", () {

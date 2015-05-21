@@ -28,8 +28,8 @@ import "package:angular2/src/dom/dom_adapter.dart" show DOM;
 import "package:angular2/src/mock/location_mock.dart" show SpyLocation;
 import "package:angular2/src/router/location.dart" show Location;
 import "package:angular2/src/router/route_registry.dart" show RouteRegistry;
-import "package:angular2/src/core/compiler/directive_metadata_reader.dart"
-    show DirectiveMetadataReader;
+import "package:angular2/src/core/compiler/directive_resolver.dart"
+    show DirectiveResolver;
 
 var teamCmpCount;
 main() {
@@ -38,7 +38,7 @@ main() {
     beforeEachBindings(() => [
       Pipeline,
       RouteRegistry,
-      DirectiveMetadataReader,
+      DirectiveResolver,
       bind(Location).toClass(SpyLocation),
       bind(Router).toFactory((registry, pipeline, location) {
         return new RootRouter(registry, pipeline, location, MyComp);
@@ -127,6 +127,22 @@ main() {
         async.done();
       });
     }));
+    getHref(view) {
+      return DOM.getAttribute(view.rootNodes[0].childNodes[0], "href");
+    }
+    it("should generate absolute hrefs that include the base href", inject(
+        [AsyncTestCompleter], (async) {
+      location.setBaseHref("/my/base");
+      compile("<a href=\"hello\" router-link=\"user\"></a>")
+          .then((_) =>
+              rtr.config({"path": "/user", "component": UserCmp, "as": "user"}))
+          .then((_) => rtr.navigate("/a/b"))
+          .then((_) {
+        view.detectChanges();
+        expect(getHref(view)).toEqual("/my/base/user");
+        async.done();
+      });
+    }));
     it("should generate link hrefs without params", inject([AsyncTestCompleter],
         (async) {
       compile("<a href=\"hello\" router-link=\"user\"></a>")
@@ -135,15 +151,12 @@ main() {
           .then((_) => rtr.navigate("/a/b"))
           .then((_) {
         view.detectChanges();
-        expect(DOM.getAttribute(view.rootNodes[0].childNodes[0], "href"))
-            .toEqual("/user");
+        expect(getHref(view)).toEqual("/user");
         async.done();
       });
     }));
-    it("should reuse common parent components", inject([
-      AsyncTestCompleter,
-      Location
-    ], (async, location) {
+    it("should reuse common parent components", inject([AsyncTestCompleter],
+        (async) {
       compile()
           .then((_) => rtr.config({"path": "/team/:id", "component": TeamCmp}))
           .then((_) => rtr.navigate("/team/angular/user/rado"))
@@ -173,26 +186,52 @@ main() {
         async.done();
       });
     }));
-    it("should generate link hrefs without params", inject([AsyncTestCompleter],
-        (async) {
-      compile("<a href=\"hello\" router-link=\"user\"></a>")
-          .then((_) =>
-              rtr.config({"path": "/user", "component": UserCmp, "as": "user"}))
-          .then((_) => rtr.navigate("/a/b"))
-          .then((_) {
-        view.detectChanges();
+    describe("when clicked", () {
+      var clickOnElement = (view) {
         var anchorEl = view.rootNodes[0].childNodes[0];
-        expect(DOM.getAttribute(anchorEl, "href")).toEqual("/user");
         var dispatchedEvent = DOM.createMouseEvent("click");
         DOM.dispatchEvent(anchorEl, dispatchedEvent);
-        expect(dispatchedEvent.defaultPrevented).toBe(true);
-        // router navigation is async.
-        rtr.subscribe((_) {
-          expect(location.urlChanges).toEqual(["/user"]);
-          async.done();
+        return dispatchedEvent;
+      };
+      it("test", inject([AsyncTestCompleter], (async) {
+        async.done();
+      }));
+      it("should navigate to link hrefs without params", inject(
+          [AsyncTestCompleter], (async) {
+        compile("<a href=\"hello\" router-link=\"user\"></a>")
+            .then((_) => rtr
+                .config({"path": "/user", "component": UserCmp, "as": "user"}))
+            .then((_) => rtr.navigate("/a/b"))
+            .then((_) {
+          view.detectChanges();
+          var dispatchedEvent = clickOnElement(view);
+          expect(dispatchedEvent.defaultPrevented).toBe(true);
+          // router navigation is async.
+          rtr.subscribe((_) {
+            expect(location.urlChanges).toEqual(["/user"]);
+            async.done();
+          });
         });
-      });
-    }));
+      }));
+      it("should navigate to link hrefs in presence of base href", inject(
+          [AsyncTestCompleter], (async) {
+        location.setBaseHref("/base");
+        compile("<a href=\"hello\" router-link=\"user\"></a>")
+            .then((_) => rtr
+                .config({"path": "/user", "component": UserCmp, "as": "user"}))
+            .then((_) => rtr.navigate("/a/b"))
+            .then((_) {
+          view.detectChanges();
+          var dispatchedEvent = clickOnElement(view);
+          expect(dispatchedEvent.defaultPrevented).toBe(true);
+          // router navigation is async.
+          rtr.subscribe((_) {
+            expect(location.urlChanges).toEqual(["/base/user"]);
+            async.done();
+          });
+        });
+      }));
+    });
   });
 }
 @Component(selector: "hello-cmp")

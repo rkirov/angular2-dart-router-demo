@@ -1,7 +1,8 @@
 library angular2.src.di.key;
 
 import "package:angular2/src/facade/collection.dart" show MapWrapper;
-import "package:angular2/src/facade/lang.dart" show stringify, Type;
+import "package:angular2/src/facade/lang.dart"
+    show stringify, Type, isBlank, BaseException;
 import "type_literal.dart" show TypeLiteral;
 export "type_literal.dart" show TypeLiteral;
 // TODO: uncoment `int` once https://github.com/angular/angular/issues/1414 is fixed
@@ -25,6 +26,9 @@ class Key {
    * @private
    */
   Key(Object token, num id) {
+    if (isBlank(token)) {
+      throw new BaseException("Token must be defined!");
+    }
     this.token = token;
     this.id = id;
   }

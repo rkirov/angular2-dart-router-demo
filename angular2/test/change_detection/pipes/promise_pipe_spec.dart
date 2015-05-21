@@ -20,7 +20,8 @@ import "package:angular2/src/change_detection/pipes/pipe.dart"
     show WrappedValue;
 import "package:angular2/src/change_detection/change_detector_ref.dart"
     show ChangeDetectorRef;
-import "package:angular2/src/facade/async.dart" show PromiseWrapper;
+import "package:angular2/src/facade/async.dart"
+    show PromiseWrapper, TimerWrapper;
 
 main() {
   describe("PromisePipe", () {
@@ -50,7 +51,7 @@ main() {
           [AsyncTestCompleter], (async) {
         pipe.transform(completer.promise);
         completer.resolve(message);
-        PromiseWrapper.setTimeout(() {
+        TimerWrapper.setTimeout(() {
           expect(pipe.transform(completer.promise))
               .toEqual(new WrappedValue(message));
           async.done();
@@ -60,7 +61,7 @@ main() {
           inject([AsyncTestCompleter], (async) {
         pipe.transform(completer.promise);
         completer.resolve(message);
-        PromiseWrapper.setTimeout(() {
+        TimerWrapper.setTimeout(() {
           pipe.transform(completer.promise);
           expect(pipe.transform(completer.promise)).toBe(message);
           async.done();
@@ -73,7 +74,7 @@ main() {
         expect(pipe.transform(newCompleter.promise)).toBe(null);
         // this should not affect the pipe, so it should return WrappedValue
         completer.resolve(message);
-        PromiseWrapper.setTimeout(() {
+        TimerWrapper.setTimeout(() {
           expect(pipe.transform(newCompleter.promise)).toBe(null);
           async.done();
         }, 0);
@@ -82,11 +83,29 @@ main() {
           inject([AsyncTestCompleter], (async) {
         pipe.transform(completer.promise);
         completer.resolve(message);
-        PromiseWrapper.setTimeout(() {
+        TimerWrapper.setTimeout(() {
           expect(ref.spy("requestCheck")).toHaveBeenCalled();
           async.done();
         }, 0);
       }));
+      describe("onDestroy", () {
+        it("should do nothing when no source", () {
+          expect(() => pipe.onDestroy()).not.toThrow();
+        });
+        it("should dispose of the existing source", inject([AsyncTestCompleter],
+            (async) {
+          pipe.transform(completer.promise);
+          expect(pipe.transform(completer.promise)).toBe(null);
+          completer.resolve(message);
+          TimerWrapper.setTimeout(() {
+            expect(pipe.transform(completer.promise))
+                .toEqual(new WrappedValue(message));
+            pipe.onDestroy();
+            expect(pipe.transform(completer.promise)).toBe(null);
+            async.done();
+          }, 0);
+        }));
+      });
     });
   });
 }

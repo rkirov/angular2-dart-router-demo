@@ -14,7 +14,7 @@ import "../shadow_dom/shadow_dom_strategy.dart" show ShadowDomStrategy;
 
 class CompileStepFactory {
   List<CompileStep> createSteps(
-      ViewDefinition template, List<Future> subTaskPromises) {
+      ViewDefinition template, List<Future<dynamic>> subTaskPromises) {
     return null;
   }
 }
@@ -26,7 +26,7 @@ class DefaultStepFactory extends CompileStepFactory {
     this._parser = parser;
     this._shadowDomStrategy = shadowDomStrategy;
   }
-  createSteps(ViewDefinition template, List<Future> subTaskPromises) {
+  createSteps(ViewDefinition template, List<Future<dynamic>> subTaskPromises) {
     return [
       new ViewSplitter(this._parser),
       new PropertyBindingParser(this._parser),

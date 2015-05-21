@@ -1,6 +1,6 @@
 library angular2.src.router.route_registry;
 
-import "route_recognizer.dart" show RouteRecognizer;
+import "route_recognizer.dart" show RouteRecognizer, RouteMatch;
 import "instruction.dart" show Instruction, noopInstruction;
 import "package:angular2/src/facade/collection.dart"
     show List, ListWrapper, Map, MapWrapper, Map, StringMapWrapper;
@@ -9,12 +9,19 @@ import "package:angular2/src/facade/lang.dart"
 import "route_config_impl.dart" show RouteConfig;
 import "package:angular2/src/reflection/reflection.dart" show reflector;
 
+/**
+ * The RouteRegistry holds route configurations for each component in an Angular app.
+ * It is responsible for creating Instructions from URLs, and generating URLs based on route and parameters.
+ */
 class RouteRegistry {
   Map<dynamic, RouteRecognizer> _rules;
   RouteRegistry() {
     this._rules = MapWrapper.create();
   }
-  config(parentComponent, config) {
+  /**
+   * Given a component and a configuration object, add the route to this registry
+   */
+  void config(parentComponent, Map<String, dynamic> config) {
     if (!StringMapWrapper.contains(config, "path")) {
       throw new BaseException("Route config does not contain \"path\"");
     }
@@ -24,26 +31,25 @@ class RouteRegistry {
       throw new BaseException(
           "Route config does not contain \"component,\" \"components,\" or \"redirectTo\"");
     }
-    RouteRecognizer recognizer;
-    if (MapWrapper.contains(this._rules, parentComponent)) {
-      recognizer = MapWrapper.get(this._rules, parentComponent);
-    } else {
+    RouteRecognizer recognizer = MapWrapper.get(this._rules, parentComponent);
+    if (isBlank(recognizer)) {
       recognizer = new RouteRecognizer();
       MapWrapper.set(this._rules, parentComponent, recognizer);
     }
     config = normalizeConfig(config);
     if (StringMapWrapper.contains(config, "redirectTo")) {
-      recognizer.addRedirect(StringMapWrapper.get(config, "path"),
-          StringMapWrapper.get(config, "redirectTo"));
+      recognizer.addRedirect(config["path"], config["redirectTo"]);
       return;
     }
-    var components = StringMapWrapper.get(config, "components");
-    StringMapWrapper.forEach(components, (component, _) {
-      this.configFromComponent(component);
-    });
+    var components = config["components"];
+    StringMapWrapper.forEach(
+        components, (component, _) => this.configFromComponent(component));
     recognizer.addConfig(config["path"], config, config["as"]);
   }
-  configFromComponent(component) {
+  /**
+   * Reads the annotations of a component and configures the registry based on them
+   */
+  void configFromComponent(component) {
     if (!isType(component)) {
       return;
     }
@@ -58,90 +64,114 @@ class RouteRegistry {
       for (var i = 0; i < annotations.length; i++) {
         var annotation = annotations[i];
         if (annotation is RouteConfig) {
-          ListWrapper.forEach(annotation.configs, (config) {
-            this.config(component, config);
-          });
+          ListWrapper.forEach(
+              annotation.configs, (config) => this.config(component, config));
         }
       }
     }
   }
-  recognize(String url, parentComponent) {
+  /**
+   * Given a URL and a parent component, return the most specific instruction for navigating
+   * the application into the state specified by the
+   */
+  Instruction recognize(String url, parentComponent) {
     var componentRecognizer = MapWrapper.get(this._rules, parentComponent);
     if (isBlank(componentRecognizer)) {
       return null;
     }
-    var solutions = componentRecognizer.recognize(url);
-    for (var i = 0; i < solutions.length; i++) {
-      var candidate = solutions[i];
-      if (candidate["unmatchedUrl"].length == 0) {
-        return handlerToLeafInstructions(candidate, parentComponent);
-      }
-      var children = StringMapWrapper.create(),
-          allMapped = true;
-      StringMapWrapper.forEach(candidate["handler"]["components"],
-          (component, name) {
-        if (!allMapped) {
-          return;
+    // Matches some beginning part of the given URL
+    var possibleMatches = componentRecognizer.recognize(url);
+    // A list of instructions that captures all of the given URL
+    var fullSolutions = ListWrapper.create();
+    for (var i = 0; i < possibleMatches.length; i++) {
+      RouteMatch candidate = possibleMatches[i];
+      // if the candidate captures all of the URL, add it to our list of solutions
+      if (candidate.unmatchedUrl.length == 0) {
+        ListWrapper.push(
+            fullSolutions, routeMatchToInstruction(candidate, parentComponent));
+      } else {
+        // otherwise, recursively match the remaining part of the URL against the component's children
+        var children = StringMapWrapper.create(),
+            allChildrenMatch = true,
+            components = StringMapWrapper.get(candidate.handler, "components");
+        var componentNames = StringMapWrapper.keys(components);
+        for (var nameIndex = 0;
+            nameIndex < componentNames.length;
+            nameIndex++) {
+          var name = componentNames[nameIndex];
+          var component = StringMapWrapper.get(components, name);
+          var childInstruction =
+              this.recognize(candidate.unmatchedUrl, component);
+          if (isPresent(childInstruction)) {
+            childInstruction.params = candidate.params;
+            children[name] = childInstruction;
+          } else {
+            allChildrenMatch = false;
+            break;
+          }
         }
-        var childInstruction =
-            this.recognize(candidate["unmatchedUrl"], component);
-        if (isPresent(childInstruction)) {
-          childInstruction.params = candidate["params"];
-          children[name] = childInstruction;
-        } else {
-          allMapped = false;
+        if (allChildrenMatch) {
+          ListWrapper.push(fullSolutions, new Instruction(
+              component: parentComponent,
+              children: children,
+              matchedUrl: candidate.matchedUrl,
+              parentSpecificity: candidate.specificity));
         }
-      });
-      if (allMapped) {
-        return new Instruction(
-            component: parentComponent,
-            children: children,
-            matchedUrl: candidate["matchedUrl"]);
       }
+    }
+    if (fullSolutions.length > 0) {
+      var mostSpecificSolution = fullSolutions[0];
+      for (var solutionIndex = 1;
+          solutionIndex < fullSolutions.length;
+          solutionIndex++) {
+        var solution = fullSolutions[solutionIndex];
+        if (solution.specificity > mostSpecificSolution.specificity) {
+          mostSpecificSolution = solution;
+        }
+      }
+      return mostSpecificSolution;
     }
     return null;
   }
-  generate(String name, dynamic params, hostComponent) {
+  String generate(String name, Map<String, String> params, hostComponent) {
     //TODO: implement for hierarchical routes
     var componentRecognizer = MapWrapper.get(this._rules, hostComponent);
-    if (isPresent(componentRecognizer)) {
-      return componentRecognizer.generate(name, params);
-    }
+    return isPresent(componentRecognizer)
+        ? componentRecognizer.generate(name, params)
+        : null;
   }
 }
-handlerToLeafInstructions(context, parentComponent) {
+Instruction routeMatchToInstruction(RouteMatch routeMatch, parentComponent) {
   var children = StringMapWrapper.create();
-  StringMapWrapper.forEach(context["handler"]["components"],
-      (component, outletName) {
-    children[outletName] =
-        new Instruction(component: component, params: context["params"]);
+  var components = StringMapWrapper.get(routeMatch.handler, "components");
+  StringMapWrapper.forEach(components, (component, outletName) {
+    children[outletName] = new Instruction(
+        component: component, params: routeMatch.params, parentSpecificity: 0);
   });
   return new Instruction(
       component: parentComponent,
       children: children,
-      matchedUrl: context["matchedUrl"]);
+      matchedUrl: routeMatch.matchedUrl,
+      parentSpecificity: routeMatch.specificity);
 }
-// given:
-
-// { component: Foo }
-
-// mutates the config to:
-
-// { components: { default: Foo } }
-normalizeConfig(Map config) {
-  if (StringMapWrapper.contains(config, "component")) {
-    var component = StringMapWrapper.get(config, "component");
-    var components = StringMapWrapper.create();
-    StringMapWrapper.set(components, "default", component);
-    var newConfig = StringMapWrapper.create();
-    StringMapWrapper.set(newConfig, "components", components);
-    StringMapWrapper.forEach(config, (value, key) {
-      if (!StringWrapper.equals(key, "component") &&
-          !StringWrapper.equals(key, "components")) {
-        StringMapWrapper.set(newConfig, key, value);
-      }
-    });
-    return newConfig;
+/*
+ * Given a config object:
+ * { 'component': Foo }
+ * Returns a new config object:
+ * { components: { default: Foo } }
+ *
+ * If the config object does not contain a `component` key, the original
+ * config object is returned.
+ */
+Map<String, dynamic> normalizeConfig(Map<String, dynamic> config) {
+  if (!StringMapWrapper.contains(config, "component")) {
+    return config;
   }
-  return config;
+  var newConfig = {"components": {"default": config["component"]}};
+  StringMapWrapper.forEach(config, (value, key) {
+    if (key != "component" && key != "components") {
+      newConfig[key] = value;
+    }
+  });
+  return newConfig;
 }

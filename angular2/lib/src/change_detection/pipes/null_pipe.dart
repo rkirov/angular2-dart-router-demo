@@ -2,12 +2,7 @@ library angular2.src.change_detection.pipes.null_pipe;
 
 import "package:angular2/src/facade/lang.dart" show isBlank;
 import "pipe.dart" show Pipe, WrappedValue, PipeFactory;
-// HACK: workaround for Traceur behavior.
 
-// It expects all transpiled modules to contain this marker.
-
-// TODO: remove this when we no longer use traceur
-var ___esModule = true;
 /**
  * @exportedAs angular2/pipes
  */

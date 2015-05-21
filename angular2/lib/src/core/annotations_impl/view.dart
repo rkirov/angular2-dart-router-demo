@@ -5,10 +5,13 @@ import "package:angular2/src/facade/lang.dart" show Type;
 /**
  * Declares the available HTML templates for an application.
  *
- * Each angular component requires a single `@Component` and at least one `@View` annotation. The @View
- * annotation specifies the HTML template to use, and lists the directives that are active within the template.
+ * Each angular component requires a single `@Component` and at least one `@View` annotation. The
+ * @View
+ * annotation specifies the HTML template to use, and lists the directives that are active within
+ * the template.
  *
- * When a component is instantiated, the template is loaded into the component's shadow root, and the
+ * When a component is instantiated, the template is loaded into the component's shadow root, and
+ * the
  * expressions and statements in the template are evaluated against the component.
  *
  * For details on the `@Component` annotation, see {@link Component}.
@@ -62,7 +65,7 @@ class View {
    *   directives: [For]
    *   template: '
    *   <ul>
-   *     <li *for="item in items">{{item}}</li>
+   *     <li *ng-for="#item of items">{{item}}</li>
    *   </ul>'
    * })
    * class MyComponent {
@@ -74,7 +77,7 @@ class View {
    * Specify a custom renderer for this View.
    * If this is set, neither `template`, `templateURL` nor `directives` are used.
    */
-  final dynamic renderer;
+  final String renderer;
   const View({templateUrl, template, directives, renderer})
       : templateUrl = templateUrl,
         template = template,

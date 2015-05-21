@@ -13,8 +13,6 @@ import "package:angular2/test_lib.dart"
         xdescribe,
         xit;
 import "package:angular2/src/core/application.dart" show bootstrap;
-import "package:angular2/src/core/application_tokens.dart"
-    show appComponentAnnotatedTypeToken;
 import "package:angular2/src/core/annotations_impl/annotations.dart"
     show Component, Directive;
 import "package:angular2/src/dom/dom_adapter.dart" show DOM;
@@ -114,8 +112,7 @@ main() {
         [AsyncTestCompleter], (async) {
       var refPromise = bootstrap(HelloRootCmp, testBindings);
       refPromise.then((ref) {
-        expect(ref.injector.get(appComponentAnnotatedTypeToken).type)
-            .toBe(HelloRootCmp);
+        expect(ref.injector.get(HelloRootCmp)).toBeAnInstanceOf(HelloRootCmp);
         async.done();
       });
     }));

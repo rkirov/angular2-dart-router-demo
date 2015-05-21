@@ -40,7 +40,9 @@ const INVALID = "INVALID";
 //  setParent(parent){}
 
 //}
-
+bool isControl(Object c) {
+  return c is AbstractControl;
+}
 /**
  * Omitting from external API doc as this is really an abstract internal concept.
  */

@@ -62,7 +62,7 @@ class ElementBinder {
 }
 class DirectiveBinder {
   // Index into the array of directives in the View instance
-  dynamic directiveIndex;
+  num directiveIndex;
   Map<String, ASTWithSource> propertyBindings;
   // Note: this contains a preprocessed AST
 
@@ -98,7 +98,7 @@ class ProtoViewDto {
 
   // inside of a component view
   static get EMBEDDED_VIEW_TYPE {
-    return 1;
+    return 2;
   }
   RenderProtoViewRef render;
   List<ElementBinder> elementBinders;
@@ -121,6 +121,7 @@ class DirectiveMetadata {
   dynamic id;
   String selector;
   bool compileChildren;
+  List<String> events;
   Map<String, String> hostListeners;
   Map<String, String> hostProperties;
   Map<String, String> hostAttributes;
@@ -128,12 +129,18 @@ class DirectiveMetadata {
   Map<String, String> properties;
   List<String> readAttributes;
   num type;
-  DirectiveMetadata({id, selector, compileChildren, hostListeners,
+  bool callOnDestroy;
+  bool callOnChange;
+  bool callOnAllChangesDone;
+  String changeDetection;
+  DirectiveMetadata({id, selector, compileChildren, events, hostListeners,
       hostProperties, hostAttributes, hostActions, properties, readAttributes,
-      type}) {
+      type, callOnDestroy, callOnChange, callOnAllChangesDone,
+      changeDetection}) {
     this.id = id;
     this.selector = selector;
     this.compileChildren = isPresent(compileChildren) ? compileChildren : true;
+    this.events = events;
     this.hostListeners = hostListeners;
     this.hostProperties = hostProperties;
     this.hostAttributes = hostAttributes;
@@ -141,6 +148,10 @@ class DirectiveMetadata {
     this.properties = properties;
     this.readAttributes = readAttributes;
     this.type = type;
+    this.callOnDestroy = callOnDestroy;
+    this.callOnChange = callOnChange;
+    this.callOnAllChangesDone = callOnAllChangesDone;
+    this.changeDetection = changeDetection;
   }
 }
 // An opaque reference to a DomProtoView
@@ -163,7 +174,7 @@ class RenderCompiler {
   /**
    * Creats a ProtoViewDto that contains a single nested component with the given componentId.
    */
-  Future<ProtoViewDto> compileHost(componentId) {
+  Future<ProtoViewDto> compileHost(DirectiveMetadata directiveMetadata) {
     return null;
   }
   /**
@@ -177,20 +188,21 @@ class RenderCompiler {
 }
 class Renderer {
   /**
-   * Creates a host view that includes the given element.
-   * @param {RenderViewRef} parentHostViewRef (might be null)
-   * @param {any} hostElementSelector css selector for the host element
-   * @param {RenderProtoViewRef} hostProtoViewRef a RenderProtoViewRef of type ProtoViewDto.HOST_VIEW_TYPE
+   * Creates a root host view that includes the given element.
+   * @param {RenderProtoViewRef} hostProtoViewRef a RenderProtoViewRef of type
+   * ProtoViewDto.HOST_VIEW_TYPE
+   * @param {any} hostElementSelector css selector for the host element (will be queried against the
+   * main document)
    * @return {RenderViewRef} the created view
    */
-  RenderViewRef createInPlaceHostView(RenderViewRef parentHostViewRef,
-      String hostElementSelector, RenderProtoViewRef hostProtoViewRef) {
+  RenderViewRef createRootHostView(
+      RenderProtoViewRef hostProtoViewRef, String hostElementSelector) {
     return null;
   }
   /**
-   * Destroys the given host view in the given parent view.
+   * Detaches a free host view's element from the DOM.
    */
-  destroyInPlaceHostView(
+  detachFreeHostView(
       RenderViewRef parentHostViewRef, RenderViewRef hostViewRef) {}
   /**
    * Creates a regular view out of the given ProtoView
@@ -213,23 +225,27 @@ class Renderer {
   detachComponentView(RenderViewRef hostViewRef, num boundElementIndex,
       RenderViewRef componentViewRef) {}
   /**
-   * Attaches a view into a ViewContainer (in the given parentView at the given element) at the given index.
+   * Attaches a view into a ViewContainer (in the given parentView at the given element) at the
+   * given index.
    */
   attachViewInContainer(RenderViewRef parentViewRef, num boundElementIndex,
       num atIndex, RenderViewRef viewRef) {}
   /**
-   * Detaches a view into a ViewContainer (in the given parentView at the given element) at the given index.
+   * Detaches a view into a ViewContainer (in the given parentView at the given element) at the
+   * given index.
    */
 
   // TODO(tbosch): this should return a promise as it can be animated!
   detachViewInContainer(RenderViewRef parentViewRef, num boundElementIndex,
       num atIndex, RenderViewRef viewRef) {}
   /**
-   * Hydrates a view after it has been attached. Hydration/dehydration is used for reusing views inside of the view pool.
+   * Hydrates a view after it has been attached. Hydration/dehydration is used for reusing views
+   * inside of the view pool.
    */
   hydrateView(RenderViewRef viewRef) {}
   /**
-   * Dehydrates a view after it has been attached. Hydration/dehydration is used for reusing views inside of the view pool.
+   * Dehydrates a view after it has been attached. Hydration/dehydration is used for reusing views
+   * inside of the view pool.
    */
   dehydrateView(RenderViewRef viewRef) {}
   /**
@@ -237,33 +253,33 @@ class Renderer {
    * Note: This will fail if the property was not mentioned previously as a host property
    * in the ProtoView
    */
-  void setElementProperty(RenderViewRef viewRef, num elementIndex,
+  setElementProperty(RenderViewRef viewRef, num elementIndex,
       String propertyName, dynamic propertyValue) {}
   /**
    * Calls an action.
    * Note: This will fail if the action was not mentioned previously as a host action
    * in the ProtoView
    */
-  void callAction(RenderViewRef viewRef, num elementIndex,
-      String actionExpression, dynamic actionArgs) {}
+  callAction(RenderViewRef viewRef, num elementIndex, String actionExpression,
+      dynamic actionArgs) {}
   /**
    * Sets the value of a text node.
    */
-  void setText(RenderViewRef viewRef, num textNodeIndex, String text) {}
+  setText(RenderViewRef viewRef, num textNodeIndex, String text) {}
   /**
    * Sets the dispatcher for all events of the given view
    */
-  void setEventDispatcher(RenderViewRef viewRef, dynamic dispatcher) {}
+  setEventDispatcher(RenderViewRef viewRef, EventDispatcher dispatcher) {}
 }
 /**
  * A dispatcher for all events happening in a view.
  */
-class EventDispatcher {
+abstract class EventDispatcher {
   /**
    * Called when an event was triggered for a on-* attribute on an element.
    * @param {Map<string, any>} locals Locals to be used to evaluate the
    *   event expressions
    */
-  void dispatchEvent(
-      num elementIndex, String eventName, Map<String, dynamic> locals) {}
+  dispatchEvent(
+      num elementIndex, String eventName, Map<String, dynamic> locals);
 }

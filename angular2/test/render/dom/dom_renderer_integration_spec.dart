@@ -17,21 +17,36 @@ import "package:angular2/test_lib.dart"
         SpyObject;
 import "package:angular2/src/facade/collection.dart" show MapWrapper;
 import "package:angular2/src/dom/dom_adapter.dart" show DOM;
-import "dom_testbed.dart" show DomTestbed;
+import "dom_testbed.dart" show DomTestbed, TestView;
 import "package:angular2/src/render/api.dart"
     show ViewDefinition, DirectiveMetadata, RenderViewRef;
 
 main() {
   describe("DomRenderer integration", () {
     beforeEachBindings(() => [DomTestbed]);
-    it("should create and destroy host views while using the given elements in place",
+    it("should create and destroy root host views while using the given elements in place",
         inject([AsyncTestCompleter, DomTestbed], (async, tb) {
-      tb.compileAll([someComponent]).then((protoViewDtos) {
-        var view = tb.createRootView(protoViewDtos[0]);
-        expect(tb.rootEl.parentNode).toBeTruthy();
+      tb.compiler.compileHost(someComponent).then((hostProtoViewDto) {
+        var view = new TestView(
+            tb.renderer.createRootHostView(hostProtoViewDto.render, "#root"));
         expect(view.rawView.rootNodes[0]).toEqual(tb.rootEl);
-        tb.renderer.destroyInPlaceHostView(null, view.viewRef);
-        expect(tb.rootEl.parentNode).toBeFalsy();
+        tb.renderer.destroyView(view.viewRef);
+        // destroying a root view should not disconnect it!
+        expect(tb.rootEl.parentNode).toBeTruthy();
+        async.done();
+      });
+    }));
+    it("should create and destroy free host views", inject([
+      AsyncTestCompleter,
+      DomTestbed
+    ], (async, tb) {
+      tb.compiler.compileHost(someComponent).then((hostProtoViewDto) {
+        var view =
+            new TestView(tb.renderer.createView(hostProtoViewDto.render));
+        var hostElement = tb.renderer.getHostElement(view.viewRef);
+        DOM.appendChild(tb.rootEl, hostElement);
+        tb.renderer.detachFreeHostView(null, view.viewRef);
+        expect(DOM.parentElement(hostElement)).toBeFalsy();
         async.done();
       });
     }));
@@ -104,15 +119,15 @@ main() {
         someComponent,
         new ViewDefinition(
             componentId: "someComponent",
-            template: "<div with-host-actions></div>",
+            template: "<input with-host-actions></input>",
             directives: [directiveWithHostActions])
       ])
           .then((protoViewDtos) {
         var views = tb.createRootViews(protoViewDtos);
         var componentView = views[1];
         tb.renderer.callAction(
-            componentView.viewRef, 0, "setAttribute(\"key\", \"value\")", null);
-        expect(DOM.getOuterHTML(tb.rootEl)).toContain("key=\"value\"");
+            componentView.viewRef, 0, "value = \"val\"", null);
+        expect(DOM.getValue(DOM.childNodes(tb.rootEl)[0])).toEqual("val");
         async.done();
       });
     }));
@@ -180,4 +195,4 @@ var directiveWithHostActions = new DirectiveMetadata(
     type: DirectiveMetadata.DIRECTIVE_TYPE,
     selector: "[with-host-actions]",
     hostActions: MapWrapper
-        .createFromStringMap({"setAttr": "setAttribute(\"key\", \"value\")"}));
+        .createFromStringMap({"setValue": "value = \"val\""}));

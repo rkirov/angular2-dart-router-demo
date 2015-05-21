@@ -1,17 +1,11 @@
 // TODO:vsavkin Use enums after switching to TypeScript
 
-// HACK: workaround for Traceur behavior.
-
-// It expects all transpiled modules to contain this marker.
-
-// TODO: remove this when we no longer use traceur
-library angular2.src.change_detection.constants;
-
-var ___esModule = true;
 /**
  * CHECK_ONCE means that after calling detectChanges the mode of the change detector
  * will become CHECKED.
  */
+library angular2.src.change_detection.constants;
+
 const CHECK_ONCE = "CHECK_ONCE";
 /**
  * CHECKED means that the change detector should be skipped until its mode changes to

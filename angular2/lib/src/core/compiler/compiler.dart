@@ -1,15 +1,14 @@
 library angular2.src.core.compiler.compiler;
 
-import "package:angular2/di.dart" show Binding;
-import "package:angular2/src/di/annotations_impl.dart" show Injectable;
+import "package:angular2/di.dart" show Binding, resolveForwardRef, Injectable;
 import "package:angular2/src/facade/lang.dart"
     show Type, isBlank, isPresent, BaseException, normalizeBlank, stringify;
 import "package:angular2/src/facade/async.dart" show Future, PromiseWrapper;
 import "package:angular2/src/facade/collection.dart"
     show List, ListWrapper, Map, MapWrapper;
-import "directive_metadata_reader.dart" show DirectiveMetadataReader;
-import "../annotations_impl/annotations.dart" show Component, Directive;
+import "directive_resolver.dart" show DirectiveResolver;
 import "view.dart" show AppProtoView;
+import "element_binder.dart" show ElementBinder;
 import "view_ref.dart" show ProtoViewRef;
 import "element_injector.dart" show DirectiveBinding;
 import "template_resolver.dart" show TemplateResolver;
@@ -25,7 +24,7 @@ import "package:angular2/src/render/api.dart" as renderApi;
  */
 @Injectable()
 class CompilerCache {
-  Map _cache;
+  Map<Type, AppProtoView> _cache;
   CompilerCache() {
     this._cache = MapWrapper.create();
   }
@@ -45,16 +44,16 @@ class CompilerCache {
  */
 @Injectable()
 class Compiler {
-  DirectiveMetadataReader _reader;
+  DirectiveResolver _reader;
   CompilerCache _compilerCache;
-  Map<Type, Future> _compiling;
+  Map<Type, Future<AppProtoView>> _compiling;
   TemplateResolver _templateResolver;
   ComponentUrlMapper _componentUrlMapper;
   UrlResolver _urlResolver;
   String _appUrl;
   renderApi.RenderCompiler _render;
   ProtoViewFactory _protoViewFactory;
-  Compiler(DirectiveMetadataReader reader, CompilerCache cache,
+  Compiler(DirectiveResolver reader, CompilerCache cache,
       TemplateResolver templateResolver, ComponentUrlMapper componentUrlMapper,
       UrlResolver urlResolver, renderApi.RenderCompiler render,
       ProtoViewFactory protoViewFactory) {
@@ -72,42 +71,44 @@ class Compiler {
     if (directiveTypeOrBinding is DirectiveBinding) {
       return directiveTypeOrBinding;
     } else if (directiveTypeOrBinding is Binding) {
-      var meta = this._reader.read(directiveTypeOrBinding.token);
+      var annotation = this._reader.resolve(directiveTypeOrBinding.token);
       return DirectiveBinding.createFromBinding(
-          directiveTypeOrBinding, meta.annotation);
+          directiveTypeOrBinding, annotation);
     } else {
-      var meta = this._reader.read(directiveTypeOrBinding);
-      return DirectiveBinding.createFromType(meta.type, meta.annotation);
+      var annotation = this._reader.resolve(directiveTypeOrBinding);
+      return DirectiveBinding.createFromType(
+          directiveTypeOrBinding, annotation);
     }
   }
   // Create a hostView as if the compiler encountered <hostcmp></hostcmp>.
 
   // Used for bootstrapping.
-  Future<ProtoViewRef> compileInHost(dynamic componentTypeOrBinding) {
+  Future<ProtoViewRef> compileInHost(
+      dynamic /* Type | Binding */ componentTypeOrBinding) {
     var componentBinding = this._bindDirective(componentTypeOrBinding);
-    this._assertTypeIsComponent(componentBinding);
-    var directiveMetadata = Compiler.buildRenderDirective(componentBinding);
+    Compiler._assertTypeIsComponent(componentBinding);
+    var directiveMetadata = componentBinding.metadata;
     return this._render.compileHost(directiveMetadata).then((hostRenderPv) {
       return this._compileNestedProtoViews(
-          null, null, hostRenderPv, [componentBinding], true);
+          componentBinding, hostRenderPv, [componentBinding]);
     }).then((appProtoView) {
       return new ProtoViewRef(appProtoView);
     });
   }
   Future<ProtoViewRef> compile(Type component) {
     var componentBinding = this._bindDirective(component);
-    this._assertTypeIsComponent(componentBinding);
-    var protoView = this._compile(componentBinding);
-    var pvPromise = PromiseWrapper.isPromise(protoView)
-        ? protoView
-        : PromiseWrapper.resolve(protoView);
+    Compiler._assertTypeIsComponent(componentBinding);
+    var pvOrPromise = this._compile(componentBinding);
+    var pvPromise = PromiseWrapper.isPromise(pvOrPromise)
+        ? (pvOrPromise as Future<AppProtoView>)
+        : PromiseWrapper.resolve(pvOrPromise);
     return pvPromise.then((appProtoView) {
       return new ProtoViewRef(appProtoView);
     });
   }
-  // TODO(vicb): union type return AppProtoView or Promise<AppProtoView>
-  _compile(DirectiveBinding componentBinding) {
-    var component = componentBinding.key.token;
+  dynamic /* Future < AppProtoView > | AppProtoView */ _compile(
+      DirectiveBinding componentBinding) {
+    var component = (componentBinding.key.token as Type);
     var protoView = this._compilerCache.get(component);
     if (isPresent(protoView)) {
       // The component has already been compiled into an AppProtoView,
@@ -130,24 +131,34 @@ class Compiler {
     if (isBlank(template)) {
       return null;
     }
-    var directives = ListWrapper.map(this._flattenDirectives(template),
-        (directive) => this._bindDirective(directive));
+    var directives = this._flattenDirectives(template);
+    for (var i = 0; i < directives.length; i++) {
+      if (!Compiler._isValidDirective(directives[i])) {
+        throw new BaseException(
+            '''Unexpected directive value \'${ stringify ( directives [ i ] )}\' on the View of component \'${ stringify ( component )}\'''');
+      }
+    }
+    var boundDirectives = ListWrapper.map(
+        directives, (directive) => this._bindDirective(directive));
     var renderTemplate =
-        this._buildRenderTemplate(component, template, directives);
+        this._buildRenderTemplate(component, template, boundDirectives);
     pvPromise = this._render.compile(renderTemplate).then((renderPv) {
       return this._compileNestedProtoViews(
-          null, componentBinding, renderPv, directives, true);
+          componentBinding, renderPv, boundDirectives);
     });
     MapWrapper.set(this._compiling, component, pvPromise);
     return pvPromise;
   }
-  // TODO(tbosch): union type return AppProtoView or Promise<AppProtoView>
-  _compileNestedProtoViews(parentProtoView, componentBinding, renderPv,
-      directives, isComponentRootView) {
-    var nestedPVPromises = [];
-    var protoView = this._protoViewFactory.createProtoView(
-        parentProtoView, componentBinding, renderPv, directives);
-    if (isComponentRootView && isPresent(componentBinding)) {
+  dynamic /* Future < AppProtoView > | AppProtoView */ _compileNestedProtoViews(
+      componentBinding, renderPv, directives) {
+    var protoViews = this._protoViewFactory.createAppProtoViews(
+        componentBinding, renderPv, directives);
+    var protoView = protoViews[0];
+    // TODO(tbosch): we should be caching host protoViews as well!
+
+    // -> need a separate cache for this...
+    if (identical(renderPv.type, renderApi.ProtoViewDto.COMPONENT_VIEW_TYPE) &&
+        isPresent(componentBinding)) {
       // Populate the cache before compiling the nested components,
 
       // so that components can reference themselves in their template.
@@ -155,36 +166,38 @@ class Compiler {
       this._compilerCache.set(component, protoView);
       MapWrapper.delete(this._compiling, component);
     }
-    var binderIndex = 0;
-    ListWrapper.forEach(protoView.elementBinders, (elementBinder) {
+    var nestedPVPromises = [];
+    ListWrapper.forEach(this._collectComponentElementBinders(protoViews),
+        (elementBinder) {
       var nestedComponent = elementBinder.componentDirective;
-      var nestedRenderProtoView =
-          renderPv.elementBinders[binderIndex].nestedProtoView;
-      var elementBinderDone = (nestedPv) {
+      var elementBinderDone = (AppProtoView nestedPv) {
         elementBinder.nestedProtoView = nestedPv;
       };
-      var nestedCall = null;
-      if (isPresent(nestedComponent)) {
-        nestedCall = this._compile(nestedComponent);
-      } else if (isPresent(nestedRenderProtoView)) {
-        nestedCall = this._compileNestedProtoViews(protoView, componentBinding,
-            nestedRenderProtoView, directives, false);
-      }
+      var nestedCall = this._compile(nestedComponent);
       if (PromiseWrapper.isPromise(nestedCall)) {
-        ListWrapper.push(nestedPVPromises, nestedCall.then(elementBinderDone));
+        ListWrapper.push(nestedPVPromises,
+            ((nestedCall as Future<AppProtoView>)).then(elementBinderDone));
       } else if (isPresent(nestedCall)) {
-        elementBinderDone(nestedCall);
+        elementBinderDone((nestedCall as AppProtoView));
       }
-      binderIndex++;
     });
-    var protoViewDone = (_) {
-      return protoView;
-    };
     if (nestedPVPromises.length > 0) {
-      return PromiseWrapper.all(nestedPVPromises).then(protoViewDone);
+      return PromiseWrapper.all(nestedPVPromises).then((_) => protoView);
     } else {
-      return protoViewDone(null);
+      return protoView;
     }
+  }
+  List<ElementBinder> _collectComponentElementBinders(
+      List<AppProtoView> protoViews) {
+    var componentElementBinders = [];
+    ListWrapper.forEach(protoViews, (protoView) {
+      ListWrapper.forEach(protoView.elementBinders, (elementBinder) {
+        if (isPresent(elementBinder.componentDirective)) {
+          ListWrapper.push(componentElementBinders, elementBinder);
+        }
+      });
+    });
+    return componentElementBinders;
   }
   renderApi.ViewDefinition _buildRenderTemplate(component, view, directives) {
     var componentUrl = this._urlResolver.resolve(
@@ -205,44 +218,8 @@ class Compiler {
         componentId: stringify(component),
         absUrl: templateAbsUrl,
         template: view.template,
-        directives: ListWrapper.map(directives, Compiler.buildRenderDirective));
-  }
-  static renderApi.DirectiveMetadata buildRenderDirective(directiveBinding) {
-    var ann = directiveBinding.annotation;
-    var renderType;
-    var compileChildren = ann.compileChildren;
-    if (ann is Component) {
-      renderType = renderApi.DirectiveMetadata.COMPONENT_TYPE;
-    } else {
-      renderType = renderApi.DirectiveMetadata.DIRECTIVE_TYPE;
-    }
-    var readAttributes = [];
-    ListWrapper.forEach(directiveBinding.dependencies, (dep) {
-      if (isPresent(dep.attributeName)) {
-        ListWrapper.push(readAttributes, dep.attributeName);
-      }
-    });
-    return new renderApi.DirectiveMetadata(
-        id: stringify(directiveBinding.key.token),
-        type: renderType,
-        selector: ann.selector,
-        compileChildren: compileChildren,
-        hostListeners: isPresent(ann.hostListeners)
-            ? MapWrapper.createFromStringMap(ann.hostListeners)
-            : null,
-        hostProperties: isPresent(ann.hostProperties)
-            ? MapWrapper.createFromStringMap(ann.hostProperties)
-            : null,
-        hostAttributes: isPresent(ann.hostAttributes)
-            ? MapWrapper.createFromStringMap(ann.hostAttributes)
-            : null,
-        hostActions: isPresent(ann.hostActions)
-            ? MapWrapper.createFromStringMap(ann.hostActions)
-            : null,
-        properties: isPresent(ann.properties)
-            ? MapWrapper.createFromStringMap(ann.properties)
-            : null,
-        readAttributes: readAttributes);
+        directives: ListWrapper.map(
+            directives, (directiveBinding) => directiveBinding.metadata));
   }
   List<Type> _flattenDirectives(View template) {
     if (isBlank(template.directives)) return [];
@@ -250,9 +227,10 @@ class Compiler {
     this._flattenList(template.directives, directives);
     return directives;
   }
-  void _flattenList(List<dynamic> tree, List<Type> out) {
+  void _flattenList(List<dynamic> tree,
+      List<dynamic /* Type | Binding | List < dynamic > */ > out) {
     for (var i = 0; i < tree.length; i++) {
-      var item = tree[i];
+      var item = resolveForwardRef(tree[i]);
       if (ListWrapper.isList(item)) {
         this._flattenList(item, out);
       } else {
@@ -260,8 +238,12 @@ class Compiler {
       }
     }
   }
-  void _assertTypeIsComponent(DirectiveBinding directiveBinding) {
-    if (!(directiveBinding.annotation is Component)) {
+  static bool _isValidDirective(dynamic /* Type | Binding */ value) {
+    return isPresent(value) && (value is Type || value is Binding);
+  }
+  static void _assertTypeIsComponent(DirectiveBinding directiveBinding) {
+    if (!identical(directiveBinding.metadata.type,
+        renderApi.DirectiveMetadata.COMPONENT_TYPE)) {
       throw new BaseException(
           '''Could not load \'${ stringify ( directiveBinding . key . token )}\' because it is not a component.''');
     }

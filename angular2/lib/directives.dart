@@ -6,15 +6,16 @@
  */
 library angular2.directives;
 
-import "src/directives/for.dart" show For;
-import "src/directives/if.dart" show If;
-import "src/directives/non_bindable.dart" show NonBindable;
-import "src/directives/switch.dart" show Switch, SwitchWhen, SwitchDefault;
+import "src/directives/ng_for.dart" show NgFor;
+import "src/directives/ng_if.dart" show NgIf;
+import "src/directives/ng_non_bindable.dart" show NgNonBindable;
+import "src/directives/ng_switch.dart"
+    show NgSwitch, NgSwitchWhen, NgSwitchDefault;
 export "src/directives/class.dart";
-export "src/directives/for.dart";
-export "src/directives/if.dart";
-export "src/directives/non_bindable.dart";
-export "src/directives/switch.dart";
+export "src/directives/ng_for.dart";
+export "src/directives/ng_if.dart";
+export "src/directives/ng_non_bindable.dart";
+export "src/directives/ng_switch.dart";
 
 /**
  * A collection of the Angular core directives that are likely to be used in each and every Angular application.
@@ -23,7 +24,7 @@ export "src/directives/switch.dart";
  * instead of writing:
  *
  * ```
- * import {If, For, Switch, SwitchWhen, SwitchDefault} from 'angular2/angular2';
+ * import {If, NgFor, NgSwitch, NgSwitchWhen, NgSwitchDefault} from 'angular2/angular2';
  * import {OtherDirective} from 'myDirectives';
  *
  * @Component({
@@ -31,7 +32,7 @@ export "src/directives/switch.dart";
  * })
  * @View({
  *   templateUrl: 'myComponent.html',
- *   directives: [If, For, Switch, SwitchWhen, SwitchDefault, OtherDirective]
+ *   directives: [If, NgFor, NgSwitch, NgSwitchWhen, NgSwitchDefault, OtherDirective]
  * })
  * export class MyComponent {
  *   ...
@@ -39,7 +40,7 @@ export "src/directives/switch.dart";
  * ```
  * one could enumerate all the core directives at once:
  *
- ** ```
+ * ```
  * import {coreDirectives} from 'angular2/angular2';
  * import {OtherDirective} from 'myDirectives';
  *
@@ -57,10 +58,10 @@ export "src/directives/switch.dart";
  *
  */
 const List coreDirectives = const [
-  For,
-  If,
-  NonBindable,
-  Switch,
-  SwitchWhen,
-  SwitchDefault
+  NgFor,
+  NgIf,
+  NgNonBindable,
+  NgSwitch,
+  NgSwitchWhen,
+  NgSwitchDefault
 ];

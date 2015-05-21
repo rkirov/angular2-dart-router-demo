@@ -12,14 +12,12 @@ import "../compiler/compile_control.dart" show CompileControl;
 import "../../api.dart" show ViewDefinition;
 import "shadow_dom_strategy.dart" show ShadowDomStrategy;
 
-class ShadowDomCompileStep extends CompileStep {
+class ShadowDomCompileStep implements CompileStep {
   ShadowDomStrategy _shadowDomStrategy;
   ViewDefinition _template;
-  List<Future> _subTaskPromises;
+  List<Future<dynamic>> _subTaskPromises;
   ShadowDomCompileStep(ShadowDomStrategy shadowDomStrategy,
-      ViewDefinition template, List<Future> subTaskPromises)
-      : super() {
-    /* super call moved to initializer */;
+      ViewDefinition template, List<Future<dynamic>> subTaskPromises) {
     this._shadowDomStrategy = shadowDomStrategy;
     this._template = template;
     this._subTaskPromises = subTaskPromises;

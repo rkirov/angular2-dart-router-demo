@@ -3,35 +3,44 @@ library angular2.src.router.instruction;
 import "package:angular2/src/facade/collection.dart"
     show Map, MapWrapper, Map, StringMapWrapper, List, ListWrapper;
 import "package:angular2/src/facade/async.dart" show Future, PromiseWrapper;
-import "package:angular2/src/facade/lang.dart" show isPresent;
+import "package:angular2/src/facade/lang.dart" show isPresent, normalizeBlank;
 
 class RouteParams {
   Map<String, String> params;
   RouteParams(Map params) {
     this.params = params;
   }
-  get(String param) {
-    return StringMapWrapper.get(this.params, param);
+  String get(String param) {
+    return normalizeBlank(StringMapWrapper.get(this.params, param));
   }
 }
+/**
+ * An `Instruction` represents the component hierarchy of the application based on a given route
+ */
 class Instruction {
   dynamic component;
   Map<String, Instruction> _children;
-  dynamic router;
-  String matchedUrl;
+  // the part of the URL captured by this instruction
+  String capturedUrl;
+  // the part of the URL captured by this instruction and all children
+  String accumulatedUrl;
   Map<String, String> params;
   bool reuse;
-  Instruction({params, component, children, matchedUrl}) {
+  num specificity;
+  Instruction({params, component, children, matchedUrl, parentSpecificity}) {
     this.reuse = false;
-    this.matchedUrl = matchedUrl;
+    this.capturedUrl = matchedUrl;
+    this.accumulatedUrl = matchedUrl;
+    this.specificity = parentSpecificity;
     if (isPresent(children)) {
       this._children = children;
       var childUrl;
       StringMapWrapper.forEach(this._children, (child, _) {
-        childUrl = child.matchedUrl;
+        childUrl = child.accumulatedUrl;
+        this.specificity += child.specificity;
       });
       if (isPresent(childUrl)) {
-        this.matchedUrl += childUrl;
+        this.accumulatedUrl += childUrl;
       }
     } else {
       this._children = StringMapWrapper.create();
@@ -39,57 +48,53 @@ class Instruction {
     this.component = component;
     this.params = params;
   }
-  getChildInstruction(String outletName) {
+  bool hasChild(String outletName) {
+    return StringMapWrapper.contains(this._children, outletName);
+  }
+  /**
+   * Returns the child instruction with the given outlet name
+   */
+  Instruction getChild(String outletName) {
     return StringMapWrapper.get(this._children, outletName);
   }
-  forEachChild(Function fn) {
+  /**
+   * (child:Instruction, outletName:string) => {}
+   */
+  void forEachChild(Function fn) {
     StringMapWrapper.forEach(this._children, fn);
-  }
-  Future mapChildrenAsync(fn) {
-    return mapObjAsync(this._children, fn);
   }
   /**
    * Does a synchronous, breadth-first traversal of the graph of instructions.
    * Takes a function with signature:
-   * (parent:Instruction, child:Instruction) => {}
+   * (child:Instruction, outletName:string) => {}
    */
-  traverseSync(Function fn) {
-    this.forEachChild((childInstruction, _) => fn(this, childInstruction));
+  void traverseSync(Function fn) {
+    this.forEachChild(fn);
     this.forEachChild(
         (childInstruction, _) => childInstruction.traverseSync(fn));
   }
   /**
-   * Does an asynchronous, breadth-first traversal of the graph of instructions.
-   * Takes a function with signature:
-   * (child:Instruction, parentOutletName:string) => {}
+   * Takes a currently active instruction and sets a reuse flag on each of this instruction's children
    */
-  traverseAsync(Function fn) {
-    return this.mapChildrenAsync(fn).then((_) => this.mapChildrenAsync(
-        (childInstruction, _) => childInstruction.traverseAsync(fn)));
-  }
-  /**
-   * Takes a currently active instruction and sets a reuse flag on this instruction
-   */
-  reuseComponentsFrom(Instruction oldInstruction) {
-    this.forEachChild((childInstruction, outletName) {
-      var oldInstructionChild = oldInstruction.getChildInstruction(outletName);
+  void reuseComponentsFrom(Instruction oldInstruction) {
+    this.traverseSync((childInstruction, outletName) {
+      var oldInstructionChild = oldInstruction.getChild(outletName);
       if (shouldReuseComponent(childInstruction, oldInstructionChild)) {
         childInstruction.reuse = true;
       }
     });
   }
 }
-shouldReuseComponent(Instruction instr1, Instruction instr2) {
+bool shouldReuseComponent(Instruction instr1, Instruction instr2) {
   return instr1.component == instr2.component &&
       StringMapWrapper.equals(instr1.params, instr2.params);
 }
-mapObjAsync(Map obj, fn) {
+Future mapObjAsync(Map obj, fn) {
   return PromiseWrapper.all(mapObj(obj, fn));
 }
-List mapObj(Map obj, fn) {
+List mapObj(Map obj, Function fn) {
   var result = ListWrapper.create();
   StringMapWrapper.forEach(
       obj, (value, key) => ListWrapper.push(result, fn(value, key)));
   return result;
 }
-var noopInstruction = new Instruction();

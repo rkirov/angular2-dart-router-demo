@@ -8,33 +8,42 @@ import "base_query_list.dart" show BaseQueryList;
  * Injectable Objects that contains a live list of child directives in the light DOM of a directive.
  * The directives are kept in depth-first pre-order traversal of the DOM.
  *
- * The `QueryList` is iterable, therefore it can be used in both javascript code with `for..of` loop as well as in
- * template with `*for="of"` directive.
+ * The `QueryList` is iterable, therefore it can be used in both javascript code with `for..of` loop
+ * as well as in
+ * template with `*ng-for="of"` directive.
  *
- * NOTE: In the future this class will implement an `Observable` interface. For now it uses a plain list of observable
+ * NOTE: In the future this class will implement an `Observable` interface. For now it uses a plain
+ * list of observable
  * callbacks.
  *
  * # Example:
  *
- * Assume that `<tabs>` component would like to get a list its children which are `<pane>` components as shown in this
+ * Assume that `<tabs>` component would like to get a list its children which are `<pane>`
+ * components as shown in this
  * example:
  *
  * ```html
  * <tabs>
  *   <pane title="Overview">...</pane>
- *   <pane *for="#o of objects" [title]="o.title">{{o.text}}</pane>
+ *   <pane *ng-for="#o of objects" [title]="o.title">{{o.text}}</pane>
  * </tabs>
  * ```
  *
- * In the above example the list of `<tabs>` elements needs to get a list of `<pane>` elements so that it could render
+ * In the above example the list of `<tabs>` elements needs to get a list of `<pane>` elements so
+ * that it could render
  * tabs with the correct titles and in the correct order.
  *
- * A possible solution would be for a `<pane>` to inject `<tabs>` component and then register itself with `<tabs>`
- * component's on `hydrate` and deregister on `dehydrate` event. While a reasonable approach, this would only work
- * partialy since `*for` could rearange the list of `<pane>` components which would not be reported to `<tabs>`
- * component and thus the list of `<pane>` componets would be out of sync with respect to the list of `<pane>` elements.
+ * A possible solution would be for a `<pane>` to inject `<tabs>` component and then register itself
+ * with `<tabs>`
+ * component's on `hydrate` and deregister on `dehydrate` event. While a reasonable approach, this
+ * would only work
+ * partialy since `*ng-for` could rearange the list of `<pane>` components which would not be
+ * reported to `<tabs>`
+ * component and thus the list of `<pane>` componets would be out of sync with respect to the list
+ * of `<pane>` elements.
  *
- * A preferred solution is to inject a `QueryList` which is a live list of directives in the component`s light DOM.
+ * A preferred solution is to inject a `QueryList` which is a live list of directives in the
+ * component`s light DOM.
  *
  * ```javascript
  * @Component({
@@ -43,7 +52,7 @@ import "base_query_list.dart" show BaseQueryList;
  * @View({
  *  template: `
  *    <ul>
- *      <li *for="#pane of panes">{{pane.title}}</li>
+ *      <li *ng-for="#pane of panes">{{pane.title}}</li>
  *    </ul>
  *    <content></content>
  *  `

@@ -15,14 +15,15 @@ import "../view/proto_view_builder.dart"
  */
 class CompileElement {
   var element;
-  Map _attrs;
-  List _classList;
+  Map<String, String> _attrs;
+  List<String> _classList;
   bool isViewRoot;
   ProtoViewBuilder inheritedProtoView;
   num distanceToInheritedBinder;
   ElementBinderBuilder inheritedElementBinder;
   bool compileChildren;
   String elementDescription;
+  // error
   CompileElement(element, [compilationUnit = ""]) {
     this.element = element;
     this._attrs = null;

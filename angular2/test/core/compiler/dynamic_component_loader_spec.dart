@@ -14,16 +14,19 @@ import "package:angular2/test_lib.dart"
         inject,
         beforeEachBindings,
         it,
-        xit;
-import "package:angular2/src/test_lib/test_bed.dart" show TestBed;
+        xit,
+        viewRootNodes;
+import "package:angular2/src/test_lib/test_bed.dart" show TestBed, ViewProxy;
+import "package:angular2/di.dart" show Injector;
 import "package:angular2/src/core/annotations_impl/annotations.dart"
     show Component;
 import "package:angular2/src/core/annotations_impl/view.dart" show View;
 import "package:angular2/src/core/compiler/dynamic_component_loader.dart"
     show DynamicComponentLoader;
 import "package:angular2/src/core/compiler/element_ref.dart" show ElementRef;
-import "package:angular2/src/directives/if.dart" show If;
-import "package:angular2/src/render/dom/dom_renderer.dart" show DomRenderer;
+import "package:angular2/src/directives/ng_if.dart" show NgIf;
+import "package:angular2/src/render/dom/dom_renderer.dart"
+    show DomRenderer, DOCUMENT_TOKEN;
 import "package:angular2/src/dom/dom_adapter.dart" show DOM;
 import "package:angular2/src/core/compiler/view_manager.dart"
     show AppViewManager;
@@ -62,8 +65,8 @@ main() {
       it("should allow to destroy and create them via viewcontainer directives",
           inject([TestBed, AsyncTestCompleter], (tb, async) {
         tb.overrideView(MyComp, new View(
-            template: "<div><dynamic-comp #dynamic template=\"if: ctxBoolProp\"></dynamic-comp></div>",
-            directives: [DynamicComp, If]));
+            template: "<div><dynamic-comp #dynamic template=\"ng-if: ctxBoolProp\"></dynamic-comp></div>",
+            directives: [DynamicComp, NgIf]));
         tb.createView(MyComp).then((view) {
           view.context.ctxBoolProp = true;
           view.detectChanges();
@@ -183,10 +186,35 @@ main() {
         });
       }));
     });
+    describe("loadAsRoot", () {
+      it("should allow to create, update and destroy components", inject([
+        TestBed,
+        AsyncTestCompleter,
+        DynamicComponentLoader,
+        DOCUMENT_TOKEN,
+        Injector
+      ], (tb, async, dcl, doc, injector) {
+        var rootEl = el("<child-cmp></child-cmp>");
+        DOM.appendChild(doc.body, rootEl);
+        dcl.loadAsRoot(ChildComp, null, injector).then((componentRef) {
+          var view = new ViewProxy(componentRef);
+          expect(rootEl.parentNode).toBe(doc.body);
+          view.detectChanges();
+          expect(rootEl).toHaveText("hello");
+          componentRef.instance.ctxProp = "new";
+          view.detectChanges();
+          expect(rootEl).toHaveText("new");
+          componentRef.dispose();
+          expect(rootEl).toHaveText("");
+          expect(rootEl.parentNode).toBe(doc.body);
+          async.done();
+        });
+      }));
+    });
   });
 }
 @Component(selector: "imp-ng-cmp")
-@View(renderer: "imp-ng-cmp-renderer", template: "")
+@View(template: "")
 class ImperativeViewComponentUsingNgComponent {
   var done;
   ImperativeViewComponentUsingNgComponent(ElementRef self,
@@ -195,8 +223,13 @@ class ImperativeViewComponentUsingNgComponent {
     var div = el("<div id=\"impHost\"></div>");
     var shadowViewRef = viewManager.getComponentView(self);
     renderer.setComponentViewRootNodes(shadowViewRef.render, [div]);
-    this.done = dynamicComponentLoader.loadIntoNewLocation(
-        ChildComp, self, "#impHost", null);
+    this.done = dynamicComponentLoader
+        .loadIntoNewLocation(ChildComp, self, null)
+        .then((componentRef) {
+      var element = renderer.getHostElement(componentRef.hostView.render);
+      DOM.appendChild(div, element);
+      return componentRef;
+    });
   }
 }
 @Component(selector: "child-cmp")
@@ -218,7 +251,7 @@ class DynamicComp {
 }
 @Component(
     selector: "hello-cmp",
-    injectables: const [DynamicallyCreatedComponentService])
+    appInjector: const [DynamicallyCreatedComponentService])
 @View(template: "{{greeting}}")
 class DynamicallyCreatedCmp {
   String greeting;

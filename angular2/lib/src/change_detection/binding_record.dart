@@ -4,12 +4,7 @@ import "package:angular2/src/facade/lang.dart" show isPresent, isBlank;
 import "package:angular2/src/reflection/types.dart" show SetterFn;
 import "parser/ast.dart" show AST;
 import "directive_record.dart" show DirectiveIndex, DirectiveRecord;
-// HACK: workaround for Traceur behavior.
 
-// It expects all transpiled modules to contain this marker.
-
-// TODO: remove this when we no longer use traceur
-var ___esModule = true;
 const DIRECTIVE = "directive";
 const ELEMENT = "element";
 const TEXT_NODE = "textNode";

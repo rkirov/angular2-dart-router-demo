@@ -8,8 +8,7 @@ import "../util.dart" show NG_BINDING_CLASS;
 import "../../api.dart" show RenderProtoViewRef;
 
 resolveInternalDomProtoView(RenderProtoViewRef protoViewRef) {
-  DomProtoViewRef domProtoViewRef = protoViewRef;
-  return domProtoViewRef._protoView;
+  return ((protoViewRef as DomProtoViewRef))._protoView;
 }
 class DomProtoViewRef extends RenderProtoViewRef {
   DomProtoView _protoView;
@@ -22,7 +21,7 @@ class DomProtoView {
   var element;
   List<ElementBinder> elementBinders;
   bool isTemplateElement;
-  int rootBindingOffset;
+  num rootBindingOffset;
   DomProtoView({elementBinders, element}) {
     this.element = element;
     this.elementBinders = elementBinders;

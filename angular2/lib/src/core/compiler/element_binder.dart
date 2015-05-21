@@ -1,5 +1,6 @@
 library angular2.src.core.compiler.element_binder;
 
+import "package:angular2/change_detection.dart" show AST;
 import "package:angular2/src/facade/lang.dart"
     show int, isBlank, isPresent, BaseException;
 import "element_injector.dart" as eiModule;
@@ -8,24 +9,18 @@ import "package:angular2/src/facade/collection.dart" show List, Map;
 import "view.dart" as viewModule;
 
 class ElementBinder {
+  int index;
+  ElementBinder parent;
+  int distanceToParent;
   eiModule.ProtoElementInjector protoElementInjector;
   DirectiveBinding componentDirective;
   viewModule.AppProtoView nestedProtoView;
-  Map hostListeners;
-  ElementBinder parent;
-  int index;
-  int distanceToParent;
-  ElementBinder(int index, ElementBinder parent, int distanceToParent,
-      eiModule.ProtoElementInjector protoElementInjector,
-      DirectiveBinding componentDirective) {
+  Map<String, Map<num, AST>> hostListeners;
+  ElementBinder(this.index, this.parent, this.distanceToParent,
+      this.protoElementInjector, this.componentDirective) {
     if (isBlank(index)) {
       throw new BaseException("null index not allowed.");
     }
-    this.protoElementInjector = protoElementInjector;
-    this.componentDirective = componentDirective;
-    this.parent = parent;
-    this.index = index;
-    this.distanceToParent = distanceToParent;
     // updated later when events are bound
     this.hostListeners = null;
     // updated later, so we are able to resolve cycles

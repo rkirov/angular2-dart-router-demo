@@ -64,6 +64,14 @@ class StringWrapper {
     return s.replaceAll(from, replace);
   }
 
+  static String toUpperCase(String s) {
+    return s.toUpperCase();
+  }
+
+  static String toLowerCase(String s) {
+    return s.toLowerCase();
+  }
+
   static startsWith(String s, String start) {
     return s.startsWith(start);
   }
@@ -201,7 +209,10 @@ bool assertionsEnabled() {
 // Can't be all uppercase as our transpiler would think it is a special directive...
 class Json {
   static parse(String s) => convert.JSON.decode(s);
-  static String stringify(data) => convert.JSON.encode(data);
+  static String stringify(data) {
+    var encoder = new convert.JsonEncoder.withIndent("  ");
+    return encoder.convert(data);
+  }
 }
 
 class DateWrapper {

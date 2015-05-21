@@ -17,7 +17,8 @@ import "package:angular2/src/facade/lang.dart"
  *
  * Please make sure to keep to edits in sync with the source file.
  *
- * Source: https://github.com/webcomponents/webcomponentsjs/blob/4efecd7e0e/src/ShadowCSS/ShadowCSS.js
+ * Source:
+ * https://github.com/webcomponents/webcomponentsjs/blob/4efecd7e0e/src/ShadowCSS/ShadowCSS.js
  *
  * The original file level comment is reproduced below
  */
@@ -363,7 +364,7 @@ class ShadowCss {
             if (isPresent(rule.cssText)) {
               cssText += rule.cssText + "\n\n";
             }
-          } catch (x) {
+          } catch (x, x_stack) {
             if (DOM.isKeyframesRule(rule) && isPresent(rule.cssRules)) {
               cssText += this._ieSafeCssTextFromKeyFrameRule(rule);
             }
@@ -492,9 +493,9 @@ class ShadowCss {
 
     // https://code.google.com/p/chromium/issues/detail?id=358273
 
-    //var style = rule.style;
+    // var style = rule.style;
 
-    //for (var i = 0; i < style.length; i++) {
+    // for (var i = 0; i < style.length; i++) {
 
     //  var name = style.item(i);
 

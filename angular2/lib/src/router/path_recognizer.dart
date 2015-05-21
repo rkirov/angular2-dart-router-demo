@@ -8,7 +8,8 @@ import "package:angular2/src/facade/lang.dart"
         StringWrapper,
         isPresent,
         isBlank,
-        BaseException;
+        BaseException,
+        normalizeBlank;
 import "package:angular2/src/facade/collection.dart"
     show Map, MapWrapper, Map, StringMapWrapper, List, ListWrapper;
 import "url.dart" show escapeRegex;
@@ -22,7 +23,7 @@ class StaticSegment {
     this.name = "";
     this.regex = escapeRegex(string);
   }
-  generate(params) {
+  String generate(params) {
     return this.string;
   }
 }
@@ -33,12 +34,12 @@ class DynamicSegment {
     this.name = name;
     this.regex = "([^/]+)";
   }
-  generate(Map params) {
+  String generate(Map<String, String> params) {
     if (!StringMapWrapper.contains(params, this.name)) {
       throw new BaseException(
           '''Route generator for \'${ this . name}\' was not included in parameters passed.''');
     }
-    return StringMapWrapper.get(params, this.name);
+    return normalizeBlank(StringMapWrapper.get(params, this.name));
   }
 }
 class StarSegment {
@@ -48,13 +49,13 @@ class StarSegment {
     this.name = name;
     this.regex = "(.+)";
   }
-  generate(Map params) {
-    return StringMapWrapper.get(params, this.name);
+  String generate(Map<String, String> params) {
+    return normalizeBlank(StringMapWrapper.get(params, this.name));
   }
 }
 var paramMatcher = RegExpWrapper.create("^:([^/]+)\$");
 var wildcardMatcher = RegExpWrapper.create("^\\*([^/]+)\$");
-List parsePathString(String route) {
+parsePathString(String route) {
   // normalize route as not starting with a "/". Recognition will
 
   // also normalize.
@@ -63,41 +64,67 @@ List parsePathString(String route) {
   }
   var segments = splitBySlash(route);
   var results = ListWrapper.create();
+  var specificity = 0;
+  // The "specificity" of a path is used to determine which route is used when multiple routes match a URL.
+
+  // Static segments (like "/foo") are the most specific, followed by dynamic segments (like "/:id"). Star segments
+
+  // add no specificity. Segments at the start of the path are more specific than proceeding ones.
+
+  // The code below uses place values to combine the different types of segments into a single integer that we can
+
+  // sort later. Each static segment is worth hundreds of points of specificity (10000, 9900, ..., 200), and each
+
+  // dynamic segment is worth single points of specificity (100, 99, ... 2).
+  if (segments.length > 98) {
+    throw new BaseException(
+        '''\'${ route}\' has more than the maximum supported number of segments.''');
+  }
   for (var i = 0; i < segments.length; i++) {
     var segment = segments[i],
         match;
     if (isPresent(match = RegExpWrapper.firstMatch(paramMatcher, segment))) {
       ListWrapper.push(results, new DynamicSegment(match[1]));
+      specificity += (100 - i);
     } else if (isPresent(
         match = RegExpWrapper.firstMatch(wildcardMatcher, segment))) {
       ListWrapper.push(results, new StarSegment(match[1]));
     } else if (segment.length > 0) {
       ListWrapper.push(results, new StaticSegment(segment));
+      specificity += 100 * (100 - i);
     }
   }
-  return results;
+  return {"segments": results, "specificity": specificity};
 }
-var SLASH_RE = RegExpWrapper.create("/");
 List<String> splitBySlash(String url) {
-  return StringWrapper.split(url, SLASH_RE);
+  return url.split("/");
 }
 // represents something like '/foo/:bar'
 class PathRecognizer {
   List segments;
   RegExp regex;
   dynamic handler;
+  num specificity;
+  String path;
   PathRecognizer(String path, dynamic handler) {
+    this.path = path;
     this.handler = handler;
-    this.segments = ListWrapper.create();
-    var segments = parsePathString(path);
+    this.segments = [];
+    // TODO: use destructuring assignment
+
+    // see https://github.com/angular/ts2dart/issues/158
+    var parsed = parsePathString(path);
+    var specificity = parsed["specificity"];
+    var segments = parsed["segments"];
     var regexString = "^";
     ListWrapper.forEach(segments, (segment) {
       regexString += "/" + segment.regex;
     });
     this.regex = RegExpWrapper.create(regexString);
     this.segments = segments;
+    this.specificity = specificity;
   }
-  Map parseParams(String url) {
+  Map<String, String> parseParams(String url) {
     var params = StringMapWrapper.create();
     var urlPart = url;
     for (var i = 0; i < this.segments.length; i++) {
@@ -111,7 +138,7 @@ class PathRecognizer {
     }
     return params;
   }
-  String generate(Map params) {
+  String generate(Map<String, String> params) {
     return ListWrapper.join(ListWrapper.map(
         this.segments, (segment) => "/" + segment.generate(params)), "");
   }

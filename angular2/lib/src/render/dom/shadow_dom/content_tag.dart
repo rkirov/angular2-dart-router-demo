@@ -6,8 +6,8 @@ import "package:angular2/src/facade/lang.dart" show isPresent;
 import "package:angular2/src/facade/collection.dart" show List, ListWrapper;
 
 class ContentStrategy {
-  List nodes;
-  insert(List nodes) {}
+  List<dynamic> nodes;
+  insert(List<dynamic> nodes) {}
 }
 /**
  * An implementation of the content tag that is used by transcluding components.
@@ -26,7 +26,7 @@ class RenderedContent extends ContentStrategy {
   // Inserts the nodes in between the start and end scripts.
 
   // Previous content is removed.
-  insert(List nodes) {
+  insert(List<dynamic> nodes) {
     this.nodes = nodes;
     DOM.insertAllBefore(this.endScript, nodes);
     this._removeNodesUntil(
@@ -53,7 +53,7 @@ class IntermediateContent extends ContentStrategy {
     this.nodes = [];
     this.destinationLightDom = destinationLightDom;
   }
-  insert(List nodes) {
+  insert(List<dynamic> nodes) {
     this.nodes = nodes;
     this.destinationLightDom.redistribute();
   }
@@ -72,10 +72,10 @@ class Content {
         ? new IntermediateContent(destinationLightDom)
         : new RenderedContent(this.contentStartElement);
   }
-  List nodes() {
+  List<dynamic> nodes() {
     return this._strategy.nodes;
   }
-  insert(List nodes) {
+  insert(List<dynamic> nodes) {
     this._strategy.insert(nodes);
   }
 }

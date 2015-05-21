@@ -6,12 +6,7 @@ import "package:angular2/src/facade/lang.dart"
 import "pipe.dart" show Pipe;
 import "package:angular2/src/di/decorators.dart" show Injectable;
 import "../change_detector_ref.dart" show ChangeDetectorRef;
-// HACK: workaround for Traceur behavior.
 
-// It expects all transpiled modules to contain this marker.
-
-// TODO: remove this when we no longer use traceur
-var ___esModule = true;
 @Injectable()
 class PipeRegistry {
   var config;

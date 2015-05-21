@@ -6,12 +6,7 @@ import "change_detector_ref.dart" show ChangeDetectorRef;
 import "interfaces.dart" show ChangeDetector;
 import "constants.dart"
     show CHECK_ALWAYS, CHECK_ONCE, CHECKED, DETACHED, ON_PUSH;
-// HACK: workaround for Traceur behavior.
 
-// It expects all transpiled modules to contain this marker.
-
-// TODO: remove this when we no longer use traceur
-var ___esModule = true;
 class AbstractChangeDetector extends ChangeDetector {
   List<dynamic> lightDomChildren;
   List<dynamic> shadowDomChildren;
@@ -52,7 +47,7 @@ class AbstractChangeDetector extends ChangeDetector {
     if (identical(this.mode, DETACHED) || identical(this.mode, CHECKED)) return;
     this.detectChangesInRecords(throwOnChange);
     this._detectChangesInLightDomChildren(throwOnChange);
-    this.callOnAllChangesDone();
+    if (identical(throwOnChange, false)) this.callOnAllChangesDone();
     this._detectChangesInShadowDomChildren(throwOnChange);
     if (identical(this.mode, CHECK_ONCE)) this.mode = CHECKED;
   }

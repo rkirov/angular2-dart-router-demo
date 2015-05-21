@@ -2,12 +2,7 @@ library angular2.src.change_detection.exceptions;
 
 import "proto_record.dart" show ProtoRecord;
 import "package:angular2/src/facade/lang.dart" show BaseException;
-// HACK: workaround for Traceur behavior.
 
-// It expects all transpiled modules to contain this marker.
-
-// TODO: remove this when we no longer use traceur
-var ___esModule = true;
 class ExpressionChangedAfterItHasBeenChecked extends BaseException {
   String message;
   ExpressionChangedAfterItHasBeenChecked(ProtoRecord proto, dynamic change)

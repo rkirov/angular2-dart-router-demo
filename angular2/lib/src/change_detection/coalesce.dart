@@ -4,12 +4,7 @@ import "package:angular2/src/facade/lang.dart" show isPresent;
 import "package:angular2/src/facade/collection.dart"
     show List, ListWrapper, Map, MapWrapper;
 import "proto_record.dart" show RECORD_TYPE_SELF, ProtoRecord;
-// HACK: workaround for Traceur behavior.
 
-// It expects all transpiled modules to contain this marker.
-
-// TODO: remove this when we no longer use traceur
-var ___esModule = true;
 /**
  * Removes "duplicate" records. It assuming that record evaluation does not
  * have side-effects.

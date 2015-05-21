@@ -16,6 +16,7 @@ import "package:angular2/src/facade/lang.dart"
     show FunctionWrapper, Type, isPresent, isBlank;
 import "package:angular2/src/facade/async.dart" show PromiseWrapper, Future;
 import "key.dart" show Key;
+import "forward_ref.dart" show resolveForwardRef;
 
 var _constructing = new Object();
 var _notFound = new Object();
@@ -45,8 +46,8 @@ bool _isWaiting(obj) {
  * }
  *
  * class Car {
- * 	constructor(@Inject(Engine) engine) {
- * 	}
+ *   constructor(@Inject(Engine) engine) {
+ *   }
  * }
  *
  * ```
@@ -69,7 +70,7 @@ bool _isWaiting(obj) {
  * @exportedAs angular2/di
  */
 class Injector {
-  List<dynamic> _bindings;
+  List<ResolvedBinding> _bindings;
   List<dynamic> _instances;
   Injector _parent;
   bool _defaultBindings;
@@ -91,8 +92,9 @@ class Injector {
    *such as
    * `fromResolvedBindings` and `createChildFromResolved`.
    */
-  static List<ResolvedBinding> resolve(List<dynamic> bindings) {
-    var resolvedBindings = _resolveBindings(bindings);
+  static List<ResolvedBinding> resolve(
+      List<dynamic /* Type | Binding | List < dynamic > */ > bindings) {
+    var resolvedBindings = resolveBindings(bindings);
     var flatten = _flattenBindings(resolvedBindings, MapWrapper.create());
     return _createListOfBindings(flatten);
   }
@@ -109,7 +111,8 @@ class Injector {
    * bindings.
    * @param `defaultBindings` Setting to true will auto-create bindings.
    */
-  static Injector resolveAndCreate(List<dynamic> bindings,
+  static Injector resolveAndCreate(
+      List<dynamic /* Type | Binding | List < dynamic > */ > bindings,
       {defaultBindings: false}) {
     return new Injector(Injector.resolve(bindings), null, defaultBindings);
   }
@@ -186,7 +189,8 @@ class Injector {
    * recursive list of more bindings.
    *
    */
-  Injector resolveAndCreateChild(List<dynamic> bindings) {
+  Injector resolveAndCreateChild(
+      List<dynamic /* Type | Binding | List < dynamic > */ > bindings) {
     return new Injector(Injector.resolve(bindings), this, false);
   }
   /**
@@ -226,10 +230,10 @@ class Injector {
       var getDependency = (d) =>
           this._getByKey(d.key, forceAsync || d.asPromise, d.lazy, d.optional);
       return ListWrapper.map(binding.dependencies, getDependency);
-    } catch (e) {
+    } catch (e, e_stack) {
       this._clear(key);
       if (e is AbstractBindingError) e.addKey(key);
-      throw e;
+      rethrow;
     }
   }
   _getInstance(Key key) {
@@ -289,7 +293,7 @@ class _SyncInjectorStrategy {
       var instance = FunctionWrapper.apply(binding.factory, deps);
       this.injector._setInstance(key, instance);
       return instance;
-    } catch (e) {
+    } catch (e, e_stack) {
       this.injector._clear(key);
       throw new InstantiationError(e, key);
     }
@@ -323,22 +327,22 @@ class _AsyncInjectorStrategy {
     var deps = this.injector._resolveDependencies(key, binding, true);
     var depsPromise = PromiseWrapper.all(deps);
     var promise = PromiseWrapper
-        .then(depsPromise, null, (e) => this._errorHandler(key, e))
+        .then(depsPromise, null, (e, s) => this._errorHandler(key, e, s))
         .then((deps) => this._findOrCreate(key, binding, deps))
         .then((instance) => this._cacheInstance(key, instance));
     this.injector._setInstance(key, new _Waiting(promise));
     return promise;
   }
-  Future<dynamic> _errorHandler(Key key, e) {
+  Future<dynamic> _errorHandler(Key key, e, stack) {
     if (e is AbstractBindingError) e.addKey(key);
-    return PromiseWrapper.reject(e);
+    return PromiseWrapper.reject(e, stack);
   }
   _findOrCreate(Key key, ResolvedBinding binding, List<dynamic> deps) {
     try {
       var instance = this.injector._getInstance(key);
       if (!_isWaiting(instance)) return instance;
       return FunctionWrapper.apply(binding.factory, deps);
-    } catch (e) {
+    } catch (e, e_stack) {
       this.injector._clear(key);
       throw new InstantiationError(e, key);
     }
@@ -348,10 +352,11 @@ class _AsyncInjectorStrategy {
     return instance;
   }
 }
-List<ResolvedBinding> _resolveBindings(List<dynamic> bindings) {
+List<ResolvedBinding> resolveBindings(
+    List<dynamic /* Type | Binding | List < dynamic > */ > bindings) {
   var resolvedList = ListWrapper.createFixedSize(bindings.length);
   for (var i = 0; i < bindings.length; i++) {
-    var unresolved = bindings[i];
+    var unresolved = resolveForwardRef(bindings[i]);
     var resolved;
     if (unresolved is ResolvedBinding) {
       resolved = unresolved;
@@ -360,7 +365,7 @@ List<ResolvedBinding> _resolveBindings(List<dynamic> bindings) {
     } else if (unresolved is Binding) {
       resolved = unresolved.resolve();
     } else if (unresolved is List) {
-      resolved = _resolveBindings(unresolved);
+      resolved = resolveBindings(unresolved);
     } else if (unresolved is BindingBuilder) {
       throw new InvalidBindingError(unresolved.token);
     } else {
@@ -370,13 +375,21 @@ List<ResolvedBinding> _resolveBindings(List<dynamic> bindings) {
   }
   return resolvedList;
 }
-List<dynamic> _createListOfBindings(flattenedBindings) {
+List<ResolvedBinding> flattenBindings(List<ResolvedBinding> bindings) {
+  var map = _flattenBindings(bindings, MapWrapper.create());
+  var res = ListWrapper.create();
+  MapWrapper.forEach(map, (binding, keyId) => ListWrapper.push(res, binding));
+  return res;
+}
+List<ResolvedBinding> _createListOfBindings(
+    Map<num, ResolvedBinding> flattenedBindings) {
   var bindings = ListWrapper.createFixedSize(Key.numberOfKeys + 1);
   MapWrapper.forEach(flattenedBindings, (v, keyId) => bindings[keyId] = v);
   return bindings;
 }
 Map<num, ResolvedBinding> _flattenBindings(
-    List<ResolvedBinding> bindings, Map<num, ResolvedBinding> res) {
+    List<dynamic /* ResolvedBinding | List < dynamic > */ > bindings,
+    Map<num, ResolvedBinding> res) {
   ListWrapper.forEach(bindings, (b) {
     if (b is ResolvedBinding) {
       MapWrapper.set(res, b.key.id, b);

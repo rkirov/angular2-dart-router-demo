@@ -76,7 +76,7 @@ class _PendingRequest {
   }
   complete(String response) {
     if (isBlank(response)) {
-      this.completer.reject('''Failed to load ${ this . url}''');
+      this.completer.reject('''Failed to load ${ this . url}''', null);
     } else {
       this.completer.resolve(response);
     }

@@ -1,6 +1,6 @@
 library angular2.src.render.dom.dom_renderer;
 
-import "package:angular2/src/di/annotations_impl.dart" show Inject, Injectable;
+import "package:angular2/di.dart" show Inject, Injectable;
 import "package:angular2/src/facade/lang.dart"
     show int, isPresent, isBlank, BaseException, RegExpWrapper;
 import "package:angular2/src/facade/collection.dart"
@@ -19,7 +19,6 @@ import "../api.dart" show Renderer, RenderProtoViewRef, RenderViewRef;
 
 // const expressions!
 const DOCUMENT_TOKEN = "DocumentToken";
-var _DOCUMENT_SELECTOR_REGEX = RegExpWrapper.create("\\:document(.+)");
 @Injectable()
 class DomRenderer extends Renderer {
   EventManager _eventManager;
@@ -33,29 +32,17 @@ class DomRenderer extends Renderer {
     this._shadowDomStrategy = shadowDomStrategy;
     this._document = document;
   }
-  RenderViewRef createInPlaceHostView(RenderViewRef parentHostViewRef,
-      String hostElementSelector, RenderProtoViewRef hostProtoViewRef) {
-    var containerNode;
-    var documentSelectorMatch =
-        RegExpWrapper.firstMatch(_DOCUMENT_SELECTOR_REGEX, hostElementSelector);
-    if (isPresent(documentSelectorMatch)) {
-      containerNode = this._document;
-      hostElementSelector = documentSelectorMatch[1];
-    } else if (isPresent(parentHostViewRef)) {
-      var parentHostView = resolveInternalDomView(parentHostViewRef);
-      containerNode = parentHostView.shadowRoot;
-    } else {
-      containerNode = this._document;
-    }
-    var element = DOM.querySelector(containerNode, hostElementSelector);
+  RenderViewRef createRootHostView(
+      RenderProtoViewRef hostProtoViewRef, String hostElementSelector) {
+    var hostProtoView = resolveInternalDomProtoView(hostProtoViewRef);
+    var element = DOM.querySelector(this._document, hostElementSelector);
     if (isBlank(element)) {
       throw new BaseException(
           '''The selector "${ hostElementSelector}" did not match any elements''');
     }
-    var hostProtoView = resolveInternalDomProtoView(hostProtoViewRef);
     return new DomViewRef(this._createView(hostProtoView, element));
   }
-  destroyInPlaceHostView(
+  detachFreeHostView(
       RenderViewRef parentHostViewRef, RenderViewRef hostViewRef) {
     var hostView = resolveInternalDomView(hostViewRef);
     this._removeViewNodes(hostView);
@@ -79,11 +66,16 @@ class DomRenderer extends Renderer {
     componentView.hostLightDom = lightDom;
     componentView.shadowRoot = shadowRoot;
   }
-  setComponentViewRootNodes(RenderViewRef componentViewRef, List rootNodes) {
+  setComponentViewRootNodes(
+      RenderViewRef componentViewRef, List<dynamic> rootNodes) {
     var componentView = resolveInternalDomView(componentViewRef);
     this._removeViewNodes(componentView);
     componentView.rootNodes = rootNodes;
     this._moveViewNodesIntoParent(componentView.shadowRoot, componentView);
+  }
+  getHostElement(RenderViewRef hostViewRef) {
+    var hostView = resolveInternalDomView(hostViewRef);
+    return hostView.boundElements[0];
   }
   detachComponentView(RenderViewRef hostViewRef, num boundElementIndex,
       RenderViewRef componentViewRef) {
@@ -154,7 +146,7 @@ class DomRenderer extends Renderer {
         lightDom.redistribute();
       }
     }
-    //add global events
+    // add global events
     view.eventHandlerRemovers = ListWrapper.create();
     var binders = view.proto.elementBinders;
     for (var binderIdx = 0; binderIdx < binders.length; binderIdx++) {
@@ -174,7 +166,7 @@ class DomRenderer extends Renderer {
   }
   dehydrateView(RenderViewRef viewRef) {
     var view = resolveInternalDomView(viewRef);
-    //remove global events
+    // remove global events
     for (var i = 0; i < view.eventHandlerRemovers.length; i++) {
       view.eventHandlerRemovers[i]();
     }

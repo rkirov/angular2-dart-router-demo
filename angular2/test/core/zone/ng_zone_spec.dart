@@ -14,14 +14,15 @@ import "package:angular2/test_lib.dart"
         xit,
         Log,
         isInInnerZone;
-import "package:angular2/src/facade/async.dart" show PromiseWrapper;
+import "package:angular2/src/facade/async.dart"
+    show PromiseWrapper, TimerWrapper;
 import "package:angular2/src/facade/collection.dart" show ListWrapper;
 import "package:angular2/src/facade/lang.dart" show BaseException;
 import "package:angular2/src/core/zone/ng_zone.dart" show NgZone;
 
 // Schedules a macrotask (using a timer)
 void macroTask(Function fn) {
-  _zone.runOutsideAngular(() => PromiseWrapper.setTimeout(fn, 1));
+  _zone.runOutsideAngular(() => TimerWrapper.setTimeout(fn, 1));
 }
 // Schedules a microtasks (using a resolved promise .then())
 void microTask(Function fn) {
@@ -62,8 +63,8 @@ main() {
           _zone.initCallbacks(onErrorHandler: logError);
           var c = PromiseWrapper.completer();
           _zone.run(() {
-            PromiseWrapper.setTimeout(() {
-              PromiseWrapper.setTimeout(() {
+            TimerWrapper.setTimeout(() {
+              TimerWrapper.setTimeout(() {
                 c.resolve(null);
                 throw new BaseException("ccc");
               }, 0);
@@ -108,8 +109,8 @@ main() {
           _zone.initCallbacks(onErrorHandler: logError);
           var c = PromiseWrapper.completer();
           _zone.run(() {
-            PromiseWrapper.setTimeout(() {
-              PromiseWrapper.setTimeout(() {
+            TimerWrapper.setTimeout(() {
+              TimerWrapper.setTimeout(() {
                 c.resolve(null);
                 throw new BaseException("ccc");
               }, 0);

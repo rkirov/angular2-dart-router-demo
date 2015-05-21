@@ -30,7 +30,7 @@ class GenericBrowserDomAdapter extends DomAdapter {
         for (var i = 0; i < rawRules.length; i++) {
           rules[i] = rawRules[i];
         }
-      } catch (e) {}
+      } catch (e, e_stack) {}
     } else {}
     this.remove(style);
     return rules;

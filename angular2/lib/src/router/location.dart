@@ -15,37 +15,49 @@ class Location {
     this._baseHref = stripIndexHtml(this._browserLocation.getBaseHref());
     this._browserLocation.onPopState((_) => this._onPopState(_));
   }
-  _onPopState(_) {
+  void _onPopState(_) {
     ObservableWrapper.callNext(this._subject, {"url": this.path()});
   }
-  path() {
+  String path() {
     return this.normalize(this._browserLocation.path());
   }
-  normalize(url) {
+  String normalize(String url) {
     return this._stripBaseHref(stripIndexHtml(url));
   }
-  _stripBaseHref(url) {
+  String normalizeAbsolutely(String url) {
+    if (url[0] != "/") {
+      url = "/" + url;
+    }
+    return this._addBaseHref(url);
+  }
+  String _stripBaseHref(String url) {
     if (this._baseHref.length > 0 &&
         StringWrapper.startsWith(url, this._baseHref)) {
       return StringWrapper.substring(url, this._baseHref.length);
     }
     return url;
   }
-  go(String url) {
-    var finalUrl = url[0] == "/" ? url : this._baseHref + "/" + url;
+  String _addBaseHref(String url) {
+    if (!StringWrapper.startsWith(url, this._baseHref)) {
+      return this._baseHref + url;
+    }
+    return url;
+  }
+  void go(String url) {
+    var finalUrl = this.normalizeAbsolutely(url);
     this._browserLocation.pushState(null, "", finalUrl);
   }
-  forward() {
+  void forward() {
     this._browserLocation.forward();
   }
-  back() {
+  void back() {
     this._browserLocation.back();
   }
-  subscribe(onNext, [onThrow = null, onReturn = null]) {
+  void subscribe(onNext, [onThrow = null, onReturn = null]) {
     ObservableWrapper.subscribe(this._subject, onNext, onThrow, onReturn);
   }
 }
-stripIndexHtml(url) {
+String stripIndexHtml(String url) {
   // '/index.html'.length == 11
   if (url.length > 10 &&
       StringWrapper.substring(url, url.length - 11) == "/index.html") {

@@ -1,12 +1,12 @@
 library angular2.src.dom.dom_adapter;
 
-import "package:angular2/src/facade/lang.dart" show BaseException;
+import "package:angular2/src/facade/lang.dart" show BaseException, isBlank;
 
-// TODO: remove this when we no longer use traceur
-var ___esModule = true;
 DomAdapter DOM;
 setRootDomAdapter(DomAdapter adapter) {
-  DOM = adapter;
+  if (isBlank(DOM)) {
+    DOM = adapter;
+  }
 }
 _abstract() {
   return new BaseException("This method is abstract");
@@ -22,7 +22,7 @@ class DomAdapter {
    * Maps attribute names to their corresponding property names for cases
    * where attribute name doesn't match property name.
    */
-  dynamic get attrToPropMap {
+  Map<String, String> get attrToPropMap {
     throw _abstract();
   }
   parse(String templateHtml) {
@@ -193,7 +193,7 @@ class DomAdapter {
   String tagName(element) {
     throw _abstract();
   }
-  attributeMap(element) {
+  Map<String, String> attributeMap(element) {
     throw _abstract();
   }
   bool hasAttribute(element, String attribute) {
@@ -220,7 +220,7 @@ class DomAdapter {
   getBoundingClientRect(el) {
     throw _abstract();
   }
-  getTitle() {
+  String getTitle() {
     throw _abstract();
   }
   setTitle(String newTitle) {

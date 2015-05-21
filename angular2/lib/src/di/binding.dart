@@ -8,6 +8,7 @@ import "key.dart" show Key;
 import "annotations_impl.dart"
     show Inject, InjectLazy, InjectPromise, Optional, DependencyAnnotation;
 import "exceptions.dart" show NoAnnotationError;
+import "forward_ref.dart" show resolveForwardRef;
 
 /**
  * @private
@@ -135,7 +136,7 @@ class Binding {
    * var injector = Injector.resolveAndCreate([
    *   new Binding(Number, { toFactory: () => { return 1+2; }}),
    *   new Binding(String, { toFactory: (value) => { return "Value: " + value; },
-   *                         dependencies: [String] })
+   *                         dependencies: [Number] })
    * ]);
    *
    * expect(injector.get(Number)).toEqual(3);
@@ -154,7 +155,7 @@ class Binding {
    *     return new Promise((resolve) => resolve(1 + 2));
    *   }}),
    *   new Binding(String, { toFactory: (value) => { return "Value: " + value; },
-   *                         dependencies: [String]})
+   *                         dependencies: [Number]})
    * ]);
    *
    * injector.asyncGet(Number).then((v) => expect(v).toBe(3));
@@ -180,7 +181,7 @@ class Binding {
    * var injector = Injector.resolveAndCreate([
    *   new Binding(Number, { toFactory: () => { return 1+2; }}),
    *   new Binding(String, { toFactory: (value) => { return "Value: " + value; },
-   *                         dependencies: [String] })
+   *                         dependencies: [Number] })
    * ]);
    *
    * expect(injector.get(Number)).toEqual(3);
@@ -208,8 +209,9 @@ class Binding {
     var resolvedDeps;
     var isAsync = false;
     if (isPresent(this.toClass)) {
-      factoryFn = reflector.factory(this.toClass);
-      resolvedDeps = _dependenciesFor(this.toClass);
+      var toClass = resolveForwardRef(this.toClass);
+      factoryFn = reflector.factory(toClass);
+      resolvedDeps = _dependenciesFor(toClass);
     } else if (isPresent(this.toAlias)) {
       factoryFn = (aliasInstance) => aliasInstance;
       resolvedDeps = [Dependency.fromKey(Key.get(this.toAlias))];
@@ -225,8 +227,8 @@ class Binding {
       factoryFn = () => this.toValue;
       resolvedDeps = _EMPTY_LIST;
     }
-    return new ResolvedBinding(
-        Key.get(this.token), factoryFn, resolvedDeps, isAsync);
+    return new ResolvedBinding(Key.get(resolveForwardRef(this.token)),
+        factoryFn, resolvedDeps, isAsync);
   }
 }
 /**
@@ -422,7 +424,8 @@ class BindingBuilder {
 _constructDependencies(Function factoryFunction, List<dynamic> dependencies) {
   return isBlank(dependencies)
       ? _dependenciesFor(factoryFunction)
-      : ListWrapper.map(dependencies, (t) => Dependency.fromKey(Key.get(t)));
+      : ListWrapper.map(dependencies,
+          (t) => Dependency.fromKey(Key.get(resolveForwardRef(t))));
 }
 List<dynamic> _dependenciesFor(typeOrFunc) {
   var params = reflector.parameters(typeOrFunc);
@@ -459,6 +462,7 @@ _extractToken(typeOrFunc, annotations) {
       ListWrapper.push(depProps, paramAnnotation);
     }
   }
+  token = resolveForwardRef(token);
   if (isPresent(token)) {
     return _createDependency(token, asPromise, lazy, optional, depProps);
   } else {

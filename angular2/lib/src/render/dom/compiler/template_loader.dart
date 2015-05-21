@@ -1,6 +1,6 @@
 library angular2.src.render.dom.compiler.template_loader;
 
-import "package:angular2/src/di/annotations_impl.dart" show Injectable;
+import "package:angular2/di.dart" show Injectable;
 import "package:angular2/src/facade/lang.dart"
     show isBlank, isPresent, BaseException, stringify;
 import "package:angular2/src/facade/collection.dart"
@@ -18,12 +18,12 @@ import "package:angular2/src/services/url_resolver.dart" show UrlResolver;
 @Injectable()
 class TemplateLoader {
   XHR _xhr;
-  Map _htmlCache;
+  Map<String, dynamic> _htmlCache;
   TemplateLoader(XHR xhr, UrlResolver urlResolver) {
     this._xhr = xhr;
     this._htmlCache = StringMapWrapper.create();
   }
-  Future load(ViewDefinition template) {
+  Future<dynamic> load(ViewDefinition template) {
     if (isPresent(template.template)) {
       return PromiseWrapper.resolve(DOM.createTemplate(template.template));
     }

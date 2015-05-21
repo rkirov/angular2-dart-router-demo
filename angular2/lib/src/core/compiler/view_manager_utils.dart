@@ -1,7 +1,6 @@
 library angular2.src.core.compiler.view_manager_utils;
 
-import "package:angular2/di.dart" show Injector, Binding;
-import "package:angular2/src/di/annotations_impl.dart" show Injectable;
+import "package:angular2/di.dart" show Injector, Binding, Injectable;
 import "package:angular2/src/facade/collection.dart"
     show ListWrapper, MapWrapper, Map, StringMapWrapper, List;
 import "element_injector.dart" as eli;
@@ -10,16 +9,15 @@ import "package:angular2/src/facade/lang.dart"
 import "view.dart" as viewModule;
 import "view_manager.dart" as avmModule;
 import "package:angular2/src/render/api.dart" show Renderer;
-import "package:angular2/change_detection.dart"
-    show BindingPropagationConfig, Locals;
-import "directive_metadata_reader.dart" show DirectiveMetadataReader;
+import "package:angular2/change_detection.dart" show Locals;
+import "directive_resolver.dart" show DirectiveResolver;
 import "package:angular2/src/render/api.dart" show RenderViewRef;
 
 @Injectable()
 class AppViewManagerUtils {
-  DirectiveMetadataReader _metadataReader;
-  AppViewManagerUtils(DirectiveMetadataReader metadataReader) {
-    this._metadataReader = metadataReader;
+  DirectiveResolver _directiveResolver;
+  AppViewManagerUtils(DirectiveResolver metadataReader) {
+    this._directiveResolver = metadataReader;
   }
   dynamic getComponentInstance(
       viewModule.AppView parentView, num boundElementIndex) {
@@ -92,27 +90,25 @@ class AppViewManagerUtils {
     this._hydrateView(
         componentView, injector, elementInjector, component, null);
   }
-  attachAndHydrateInPlaceHostView(viewModule.AppView parentComponentHostView,
+  hydrateRootHostView(viewModule.AppView hostView, [Injector injector = null]) {
+    this._hydrateView(hostView, injector, null, new Object(), null);
+  }
+  attachAndHydrateFreeHostView(viewModule.AppView parentComponentHostView,
       num parentComponentBoundElementIndex, viewModule.AppView hostView,
       [Injector injector = null]) {
-    var hostElementInjector = null;
-    if (isPresent(parentComponentHostView)) {
-      hostElementInjector = parentComponentHostView.elementInjectors[
-          parentComponentBoundElementIndex];
-      var parentView = parentComponentHostView.componentChildViews[
-          parentComponentBoundElementIndex];
-      parentView.changeDetector.addChild(hostView.changeDetector);
-      ListWrapper.push(parentView.inPlaceHostViews, hostView);
-    }
+    var hostElementInjector = parentComponentHostView.elementInjectors[
+        parentComponentBoundElementIndex];
+    var parentView = parentComponentHostView.componentChildViews[
+        parentComponentBoundElementIndex];
+    parentView.changeDetector.addChild(hostView.changeDetector);
+    ListWrapper.push(parentView.freeHostViews, hostView);
     this._hydrateView(
         hostView, injector, hostElementInjector, new Object(), null);
   }
-  detachInPlaceHostView(
+  detachFreeHostView(
       viewModule.AppView parentView, viewModule.AppView hostView) {
-    if (isPresent(parentView)) {
-      parentView.changeDetector.removeChild(hostView.changeDetector);
-      ListWrapper.remove(parentView.inPlaceHostViews, hostView);
-    }
+    parentView.changeDetector.removeChild(hostView.changeDetector);
+    ListWrapper.remove(parentView.freeHostViews, hostView);
   }
   attachViewInContainer(viewModule.AppView parentView, num boundElementIndex,
       viewModule.AppView contextView, num contextBoundElementIndex, num atIndex,
@@ -176,8 +172,7 @@ class AppViewManagerUtils {
     if (isBlank(injector)) {
       injector = elementInjector.getLightDomAppInjector();
     }
-    var annotation =
-        this._metadataReader.read(componentBinding.token).annotation;
+    var annotation = this._directiveResolver.resolve(componentBinding.token);
     var componentDirective =
         eli.DirectiveBinding.createFromBinding(componentBinding, annotation);
     elementInjector.dynamicallyCreateComponent(componentDirective, injector);
@@ -197,7 +192,7 @@ class AppViewManagerUtils {
     for (var i = 0; i < binders.length; ++i) {
       var elementInjector = view.elementInjectors[i];
       if (isPresent(elementInjector)) {
-        elementInjector.instantiateDirectives(
+        elementInjector.hydrate(
             appInjector, hostElementInjector, view.preBuiltObjects[i]);
         this._setUpEventEmitters(view, elementInjector, i);
         this._setUpHostActions(view, elementInjector, i);
@@ -252,7 +247,7 @@ class AppViewManagerUtils {
     for (var i = 0; i < binders.length; ++i) {
       var elementInjector = view.elementInjectors[i];
       if (isPresent(elementInjector)) {
-        elementInjector.clearDirectives();
+        elementInjector.dehydrate();
       }
     }
     if (isPresent(view.locals)) {

@@ -18,8 +18,8 @@ import "package:angular2/src/render/dom/compiler/template_loader.dart"
     show TemplateLoader;
 import "package:angular2/src/core/compiler/template_resolver.dart"
     show TemplateResolver;
-import "package:angular2/src/core/compiler/directive_metadata_reader.dart"
-    show DirectiveMetadataReader;
+import "package:angular2/src/core/compiler/directive_resolver.dart"
+    show DirectiveResolver;
 import "package:angular2/src/core/compiler/dynamic_component_loader.dart"
     show DynamicComponentLoader;
 import "package:angular2/src/render/dom/shadow_dom/shadow_dom_strategy.dart"
@@ -82,7 +82,7 @@ _getAppBindings() {
   // The document is only available in browser environment
   try {
     appDoc = DOM.defaultDoc();
-  } catch (e) {
+  } catch (e, e_stack) {
     appDoc = null;
   }
   return [
@@ -108,7 +108,7 @@ _getAppBindings() {
     bind(ChangeDetection).toClass(DynamicChangeDetection),
     TemplateLoader,
     DynamicComponentLoader,
-    DirectiveMetadataReader,
+    DirectiveResolver,
     Parser,
     Lexer,
     ExceptionHandler,

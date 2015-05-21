@@ -9,12 +9,7 @@ import "exceptions.dart" show ExpressionChangedAfterItHasBeenChecked;
 import "pipes/pipe.dart" show WrappedValue;
 import "constants.dart"
     show CHECK_ALWAYS, CHECK_ONCE, CHECKED, DETACHED, ON_PUSH;
-// HACK: workaround for Traceur behavior.
 
-// It expects all transpiled modules to contain this marker.
-
-// TODO: remove this when we no longer use traceur
-var ___esModule = true;
 var uninitialized = new Object();
 class SimpleChange {
   dynamic previousValue;
@@ -52,7 +47,7 @@ _simpleChange(previousValue, currentValue) {
   return s;
 }
 class ChangeDetectionUtil {
-  static unitialized() {
+  static uninitialized() {
     return uninitialized;
   }
   static arrayFn0() {
@@ -108,6 +103,12 @@ class ChangeDetectionUtil {
   }
   static operation_not_equals(left, right) {
     return left != right;
+  }
+  static operation_identical(left, right) {
+    return identical(left, right);
+  }
+  static operation_not_identical(left, right) {
+    return !identical(left, right);
   }
   static operation_less_then(left, right) {
     return left < right;

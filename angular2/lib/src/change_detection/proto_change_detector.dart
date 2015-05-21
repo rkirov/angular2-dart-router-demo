@@ -1,7 +1,7 @@
 library angular2.src.change_detection.proto_change_detector;
 
 import "package:angular2/src/facade/lang.dart"
-    show isPresent, isBlank, BaseException, Type, isString;
+    show BaseException, Type, isBlank, isPresent, isString;
 import "package:angular2/src/facade/collection.dart"
     show List, ListWrapper, MapWrapper, StringMapWrapper;
 import "parser/ast.dart"
@@ -25,7 +25,11 @@ import "parser/ast.dart"
         MethodCall,
         PrefixNot;
 import "interfaces.dart"
-    show ChangeDispatcher, ChangeDetector, ProtoChangeDetector;
+    show
+        ChangeDispatcher,
+        ChangeDetector,
+        ProtoChangeDetector,
+        ChangeDetectorDefinition;
 import "change_detection_util.dart" show ChangeDetectionUtil;
 import "dynamic_change_detector.dart" show DynamicChangeDetector;
 import "change_detection_jit_generator.dart" show ChangeDetectorJITGenerator;
@@ -47,72 +51,49 @@ import "proto_record.dart"
         RECORD_TYPE_PIPE,
         RECORD_TYPE_BINDING_PIPE,
         RECORD_TYPE_INTERPOLATE;
-// HACK: workaround for Traceur behavior.
 
-// It expects all transpiled modules to contain this marker.
-
-// TODO: remove this when we no longer use traceur
-var ___esModule = true;
 class DynamicProtoChangeDetector extends ProtoChangeDetector {
   PipeRegistry _pipeRegistry;
-  List<dynamic> _bindingRecords;
-  List<dynamic> _variableBindings;
-  List<dynamic> _directiveRecords;
-  String _changeControlStrategy;
+  ChangeDetectorDefinition definition;
   List<ProtoRecord> _records;
-  DynamicProtoChangeDetector(this._pipeRegistry, this._bindingRecords,
-      this._variableBindings, this._directiveRecords,
-      this._changeControlStrategy)
-      : super() {
+  DynamicProtoChangeDetector(this._pipeRegistry, this.definition) : super() {
     /* super call moved to initializer */;
+    this._records = this._createRecords(definition);
   }
   instantiate(dynamic dispatcher) {
-    this._createRecordsIfNecessary();
-    return new DynamicChangeDetector(this._changeControlStrategy, dispatcher,
-        this._pipeRegistry, this._records, this._directiveRecords);
+    return new DynamicChangeDetector(this.definition.strategy, dispatcher,
+        this._pipeRegistry, this._records, this.definition.directiveRecords);
   }
-  _createRecordsIfNecessary() {
-    if (isBlank(this._records)) {
-      var recordBuilder = new ProtoRecordBuilder();
-      ListWrapper.forEach(this._bindingRecords, (b) {
-        recordBuilder.addAst(b, this._variableBindings);
-      });
-      this._records = coalesce(recordBuilder.records);
-    }
+  _createRecords(ChangeDetectorDefinition definition) {
+    var recordBuilder = new ProtoRecordBuilder();
+    ListWrapper.forEach(definition.bindingRecords, (b) {
+      recordBuilder.addAst(b, definition.variableNames);
+    });
+    return coalesce(recordBuilder.records);
   }
 }
 num _jitProtoChangeDetectorClassCounter = 0;
 class JitProtoChangeDetector extends ProtoChangeDetector {
   var _pipeRegistry;
-  List<dynamic> _bindingRecords;
-  List<dynamic> _variableBindings;
-  List<dynamic> _directiveRecords;
-  String _changeControlStrategy;
+  ChangeDetectorDefinition definition;
   Function _factory;
-  JitProtoChangeDetector(this._pipeRegistry, this._bindingRecords,
-      this._variableBindings, this._directiveRecords,
-      this._changeControlStrategy)
-      : super() {
+  JitProtoChangeDetector(this._pipeRegistry, this.definition) : super() {
     /* super call moved to initializer */;
-    this._factory = null;
+    this._factory = this._createFactory(definition);
   }
   instantiate(dynamic dispatcher) {
-    this._createFactoryIfNecessary();
     return this._factory(dispatcher, this._pipeRegistry);
   }
-  _createFactoryIfNecessary() {
-    if (isBlank(this._factory)) {
-      var recordBuilder = new ProtoRecordBuilder();
-      ListWrapper.forEach(this._bindingRecords, (b) {
-        recordBuilder.addAst(b, this._variableBindings);
-      });
-      var c = _jitProtoChangeDetectorClassCounter++;
-      var records = coalesce(recordBuilder.records);
-      var typeName = '''ChangeDetector${ c}''';
-      this._factory = new ChangeDetectorJITGenerator(typeName,
-              this._changeControlStrategy, records, this._directiveRecords)
-          .generate();
-    }
+  _createFactory(ChangeDetectorDefinition definition) {
+    var recordBuilder = new ProtoRecordBuilder();
+    ListWrapper.forEach(definition.bindingRecords, (b) {
+      recordBuilder.addAst(b, definition.variableNames);
+    });
+    var c = _jitProtoChangeDetectorClassCounter++;
+    var records = coalesce(recordBuilder.records);
+    var typeName = '''ChangeDetector${ c}''';
+    return new ChangeDetectorJITGenerator(typeName, definition.strategy,
+        records, this.definition.directiveRecords).generate();
   }
 }
 class ProtoRecordBuilder {
@@ -120,41 +101,35 @@ class ProtoRecordBuilder {
   ProtoRecordBuilder() {
     this.records = [];
   }
-  addAst(BindingRecord b, [List<dynamic> variableBindings = null]) {
-    var last = ListWrapper.last(this.records);
-    if (isPresent(last) &&
-        last.bindingRecord.directiveRecord == b.directiveRecord) {
-      last.lastInDirective = false;
+  addAst(BindingRecord b, [List<String> variableNames = null]) {
+    var oldLast = ListWrapper.last(this.records);
+    if (isPresent(oldLast) &&
+        oldLast.bindingRecord.directiveRecord == b.directiveRecord) {
+      oldLast.lastInDirective = false;
     }
-    var pr = _ConvertAstIntoProtoRecords.convert(
-        b, this.records.length, variableBindings);
-    if (!ListWrapper.isEmpty(pr)) {
-      var last = ListWrapper.last(pr);
-      last.lastInBinding = true;
-      last.lastInDirective = true;
-      this.records = ListWrapper.concat(this.records, pr);
+    _ConvertAstIntoProtoRecords.append(this.records, b, variableNames);
+    var newLast = ListWrapper.last(this.records);
+    if (isPresent(newLast) && !identical(newLast, oldLast)) {
+      newLast.lastInBinding = true;
+      newLast.lastInDirective = true;
     }
   }
 }
 class _ConvertAstIntoProtoRecords {
-  BindingRecord bindingRecord;
-  num contextIndex;
-  String expressionAsString;
-  List<dynamic> variableBindings;
-  List<dynamic> protoRecords;
-  _ConvertAstIntoProtoRecords(this.bindingRecord, this.contextIndex,
-      this.expressionAsString, this.variableBindings) {
-    this.protoRecords = [];
-  }
-  static convert(
-      BindingRecord b, num contextIndex, List<dynamic> variableBindings) {
+  List<ProtoRecord> _records;
+  BindingRecord _bindingRecord;
+  String _expressionAsString;
+  List<dynamic> _variableNames;
+  _ConvertAstIntoProtoRecords(this._records, this._bindingRecord,
+      this._expressionAsString, this._variableNames) {}
+  static append(
+      List<ProtoRecord> records, BindingRecord b, List<dynamic> variableNames) {
     var c = new _ConvertAstIntoProtoRecords(
-        b, contextIndex, b.ast.toString(), variableBindings);
+        records, b, b.ast.toString(), variableNames);
     b.ast.visit(c);
-    return c.protoRecords;
   }
   visitImplicitReceiver(ImplicitReceiver ast) {
-    return this.bindingRecord.implicitReceiver;
+    return this._bindingRecord.implicitReceiver;
   }
   visitInterpolation(Interpolation ast) {
     var args = this._visitAll(ast.expressions);
@@ -167,8 +142,8 @@ class _ConvertAstIntoProtoRecords {
   }
   visitAccessMember(AccessMember ast) {
     var receiver = ast.receiver.visit(this);
-    if (isPresent(this.variableBindings) &&
-        ListWrapper.contains(this.variableBindings, ast.name) &&
+    if (isPresent(this._variableNames) &&
+        ListWrapper.contains(this._variableNames, ast.name) &&
         ast.receiver is ImplicitReceiver) {
       return this._addRecord(
           RECORD_TYPE_LOCAL, ast.name, ast.name, [], null, receiver);
@@ -178,11 +153,10 @@ class _ConvertAstIntoProtoRecords {
     }
   }
   visitMethodCall(MethodCall ast) {
-    ;
     var receiver = ast.receiver.visit(this);
     var args = this._visitAll(ast.args);
-    if (isPresent(this.variableBindings) &&
-        ListWrapper.contains(this.variableBindings, ast.name)) {
+    if (isPresent(this._variableNames) &&
+        ListWrapper.contains(this._variableNames, ast.name)) {
       var target = this._addRecord(
           RECORD_TYPE_LOCAL, ast.name, ast.name, [], null, receiver);
       return this._addRecord(
@@ -247,15 +221,15 @@ class _ConvertAstIntoProtoRecords {
     return res;
   }
   _addRecord(type, name, funcOrValue, args, fixedArgs, context) {
-    var selfIndex = ++this.contextIndex;
+    var selfIndex = this._records.length + 1;
     if (context is DirectiveIndex) {
-      ListWrapper.push(this.protoRecords, new ProtoRecord(type, name,
-          funcOrValue, args, fixedArgs, -1, context, selfIndex,
-          this.bindingRecord, this.expressionAsString, false, false));
+      ListWrapper.push(this._records, new ProtoRecord(type, name, funcOrValue,
+          args, fixedArgs, -1, context, selfIndex, this._bindingRecord,
+          this._expressionAsString, false, false));
     } else {
-      ListWrapper.push(this.protoRecords, new ProtoRecord(type, name,
-          funcOrValue, args, fixedArgs, context, null, selfIndex,
-          this.bindingRecord, this.expressionAsString, false, false));
+      ListWrapper.push(this._records, new ProtoRecord(type, name, funcOrValue,
+          args, fixedArgs, context, null, selfIndex, this._bindingRecord,
+          this._expressionAsString, false, false));
     }
     return selfIndex;
   }
@@ -309,6 +283,10 @@ String _operationToPrimitiveName(String operation) {
       return "operation_equals";
     case "!=":
       return "operation_not_equals";
+    case "===":
+      return "operation_identical";
+    case "!==":
+      return "operation_not_identical";
     case "<":
       return "operation_less_then";
     case ">":
@@ -341,6 +319,10 @@ Function _operationToFunction(String operation) {
       return ChangeDetectionUtil.operation_equals;
     case "!=":
       return ChangeDetectionUtil.operation_not_equals;
+    case "===":
+      return ChangeDetectionUtil.operation_identical;
+    case "!==":
+      return ChangeDetectionUtil.operation_not_identical;
     case "<":
       return ChangeDetectionUtil.operation_less_then;
     case ">":

@@ -4,12 +4,7 @@ import "package:angular2/src/facade/lang.dart"
     show isBlank, isPresent, FunctionWrapper, BaseException;
 import "package:angular2/src/facade/collection.dart"
     show List, Map, ListWrapper, StringMapWrapper;
-// HACK: workaround for Traceur behavior.
 
-// It expects all transpiled modules to contain this marker.
-
-// TODO: remove this when we no longer use traceur
-var ___esModule = true;
 class AST {
   eval(context, locals) {
     throw new BaseException("Not supported");

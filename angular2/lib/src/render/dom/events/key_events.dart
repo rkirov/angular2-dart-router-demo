@@ -14,7 +14,7 @@ import "package:angular2/src/facade/collection.dart"
 import "event_manager.dart" show EventManagerPlugin;
 
 var modifierKeys = ["alt", "control", "meta", "shift"];
-var modifierKeyGetters = {
+Map<String, Function> modifierKeyGetters = {
   "alt": (event) => event.altKey,
   "control": (event) => event.ctrlKey,
   "meta": (event) => event.metaKey,

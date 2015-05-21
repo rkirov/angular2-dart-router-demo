@@ -28,7 +28,7 @@ main() {
       return new AppViewPool(capacity);
     }
     createProtoView() {
-      return new AppProtoView(null, null, null, null, null);
+      return new AppProtoView(null, null, null);
     }
     createView(pv) {
       return new AppView(null, pv, MapWrapper.create());

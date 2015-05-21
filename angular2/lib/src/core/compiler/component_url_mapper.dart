@@ -1,6 +1,6 @@
 library angular2.src.core.compiler.component_url_mapper;
 
-import "package:angular2/src/di/annotations_impl.dart" show Injectable;
+import "package:angular2/di.dart" show Injectable;
 import "package:angular2/src/facade/lang.dart" show Type, isPresent;
 import "package:angular2/src/facade/collection.dart" show Map, MapWrapper;
 
@@ -18,7 +18,7 @@ class ComponentUrlMapper {
   }
 }
 class RuntimeComponentUrlMapper extends ComponentUrlMapper {
-  Map _componentUrls;
+  Map<Type, String> _componentUrls;
   RuntimeComponentUrlMapper() : super() {
     /* super call moved to initializer */;
     this._componentUrls = MapWrapper.create();

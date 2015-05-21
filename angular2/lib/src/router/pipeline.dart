@@ -9,22 +9,10 @@ import "instruction.dart" show Instruction;
  * "Steps" are conceptually similar to "middleware"
  */
 class Pipeline {
-  List steps;
+  List<Function> steps;
   Pipeline() {
-    this.steps = [
-      (instruction) => instruction
-          .traverseSync((parentInstruction, childInstruction) {
-        childInstruction.router =
-            parentInstruction.router.childRouter(childInstruction.component);
-      }),
-      (instruction) => instruction.router.traverseOutlets((outlet, name) {
-        return outlet.canDeactivate(instruction.getChildInstruction(name));
-      }),
-      (instruction) => instruction.router.traverseOutlets((outlet, name) {
-        return outlet.canActivate(instruction.getChildInstruction(name));
-      }),
-      (instruction) => instruction.router.activateOutlets(instruction)
-    ];
+    this.steps =
+        [(instruction) => instruction.router.activateOutlets(instruction)];
   }
   Future process(Instruction instruction) {
     var steps = this.steps,

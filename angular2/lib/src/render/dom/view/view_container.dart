@@ -13,7 +13,7 @@ class DomViewContainer {
   contentTagContainers() {
     return this.views;
   }
-  List nodes() {
+  List<dynamic> nodes() {
     var r = [];
     for (var i = 0; i < this.views.length; ++i) {
       r = ListWrapper.concat(r, this.views[i].rootNodes);

@@ -2,14 +2,9 @@ library angular2.src.change_detection.interfaces;
 
 import "package:angular2/src/facade/collection.dart" show List;
 import "parser/locals.dart" show Locals;
-import "constants.dart" show DEFAULT;
 import "binding_record.dart" show BindingRecord;
-// HACK: workaround for Traceur behavior.
+import "directive_record.dart" show DirectiveRecord;
 
-// It expects all transpiled modules to contain this marker.
-
-// TODO: remove this when we no longer use traceur
-var ___esModule = true;
 class ProtoChangeDetector {
   ChangeDetector instantiate(dynamic dispatcher) {
     return null;
@@ -41,10 +36,8 @@ class ProtoChangeDetector {
  * @exportedAs angular2/change_detection
  */
 class ChangeDetection {
-  ProtoChangeDetector createProtoChangeDetector(String name,
-      List<dynamic> bindingRecords, List<dynamic> variableBindings,
-      List<dynamic> directiveRecords,
-      [String changeControlStrategy = DEFAULT]) {
+  ProtoChangeDetector createProtoChangeDetector(
+      ChangeDetectorDefinition definition) {
     return null;
   }
 }
@@ -64,4 +57,13 @@ class ChangeDetector {
   markPathToRootAsCheckOnce() {}
   detectChanges() {}
   checkNoChanges() {}
+}
+class ChangeDetectorDefinition {
+  String id;
+  String strategy;
+  List<String> variableNames;
+  List<BindingRecord> bindingRecords;
+  List<DirectiveRecord> directiveRecords;
+  ChangeDetectorDefinition(this.id, this.strategy, this.variableNames,
+      this.bindingRecords, this.directiveRecords) {}
 }

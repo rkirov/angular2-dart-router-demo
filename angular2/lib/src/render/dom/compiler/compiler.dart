@@ -1,6 +1,6 @@
 library angular2.src.render.dom.compiler.compiler;
 
-import "package:angular2/src/di/annotations_impl.dart" show Injectable;
+import "package:angular2/di.dart" show Injectable;
 import "package:angular2/src/facade/async.dart" show PromiseWrapper, Future;
 import "package:angular2/src/facade/lang.dart" show BaseException, isPresent;
 import "package:angular2/src/dom/dom_adapter.dart" show DOM;
@@ -34,8 +34,8 @@ class DomCompiler extends RenderCompiler {
   }
   Future<ProtoViewDto> compile(ViewDefinition template) {
     var tplPromise = this._templateLoader.load(template);
-    return PromiseWrapper.then(tplPromise,
-        (el) => this._compileTemplate(template, el), (_) {
+    return PromiseWrapper.then(tplPromise, (el) => this._compileTemplate(
+        template, el, ProtoViewDto.COMPONENT_VIEW_TYPE), (_) {
       throw new BaseException(
           '''Failed to load the template "${ template . componentId}"''');
     });
@@ -47,13 +47,16 @@ class DomCompiler extends RenderCompiler {
         template: null,
         directives: [directiveMetadata]);
     var element = DOM.createElement(directiveMetadata.selector);
-    return this._compileTemplate(hostViewDef, element);
+    return this._compileTemplate(
+        hostViewDef, element, ProtoViewDto.HOST_VIEW_TYPE);
   }
-  Future<ProtoViewDto> _compileTemplate(ViewDefinition viewDef, tplElement) {
+  Future<ProtoViewDto> _compileTemplate(
+      ViewDefinition viewDef, tplElement, num protoViewType) {
     var subTaskPromises = [];
     var pipeline = new CompilePipeline(
         this._stepFactory.createSteps(viewDef, subTaskPromises));
-    var compileElements = pipeline.process(tplElement, viewDef.componentId);
+    var compileElements =
+        pipeline.process(tplElement, protoViewType, viewDef.componentId);
     var protoView = compileElements[0].inheritedProtoView.build();
     if (subTaskPromises.length > 0) {
       return PromiseWrapper.all(subTaskPromises).then((_) => protoView);

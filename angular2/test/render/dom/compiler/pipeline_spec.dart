@@ -17,6 +17,7 @@ import "package:angular2/src/render/dom/compiler/compile_control.dart"
     show CompileControl;
 import "package:angular2/src/render/dom/view/proto_view_builder.dart"
     show ProtoViewBuilder;
+import "package:angular2/src/render/api.dart" show ProtoViewDto;
 
 main() {
   describe("compile_pipeline", () {
@@ -48,7 +49,8 @@ main() {
       var pipeline = new CompilePipeline([
         new MockStep((parent, current, control) {
           if (isPresent(DOM.getAttribute(current.element, "viewroot"))) {
-            current.inheritedProtoView = new ProtoViewBuilder(current.element);
+            current.inheritedProtoView = new ProtoViewBuilder(
+                current.element, ProtoViewDto.EMBEDDED_VIEW_TYPE);
           }
         })
       ]);
@@ -198,10 +200,9 @@ main() {
     });
   });
 }
-class MockStep extends CompileStep {
+class MockStep implements CompileStep {
   Function processClosure;
-  MockStep(process) : super() {
-    /* super call moved to initializer */;
+  MockStep(process) {
     this.processClosure = process;
   }
   process(
@@ -209,7 +210,7 @@ class MockStep extends CompileStep {
     this.processClosure(parent, current, control);
   }
 }
-class IgnoreChildrenStep extends CompileStep {
+class IgnoreChildrenStep implements CompileStep {
   process(
       CompileElement parent, CompileElement current, CompileControl control) {
     var attributeMap = DOM.attributeMap(current.element);
@@ -218,7 +219,7 @@ class IgnoreChildrenStep extends CompileStep {
     }
   }
 }
-class IgnoreCurrentElementStep extends CompileStep {
+class IgnoreCurrentElementStep implements CompileStep {
   process(
       CompileElement parent, CompileElement current, CompileControl control) {
     var attributeMap = DOM.attributeMap(current.element);

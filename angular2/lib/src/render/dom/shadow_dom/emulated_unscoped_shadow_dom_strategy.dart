@@ -36,7 +36,7 @@ class EmulatedUnscopedShadowDomStrategy extends ShadowDomStrategy {
   LightDom constructLightDom(viewModule.DomView lightDomView, el) {
     return new LightDom(lightDomView, el);
   }
-  Future processStyleElement(
+  Future<dynamic> processStyleElement(
       String hostComponentId, String templateUrl, styleEl) {
     var cssText = DOM.getText(styleEl);
     cssText = this.styleUrlResolver.resolveUrls(cssText, templateUrl);

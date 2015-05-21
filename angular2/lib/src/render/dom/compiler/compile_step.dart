@@ -7,7 +7,7 @@ import "compile_control.dart" as compileControlModule;
  * One part of the compile process.
  * Is guaranteed to be called in depth first order
  */
-class CompileStep {
-  process(CompileElement parent, CompileElement current,
-      compileControlModule.CompileControl control) {}
+abstract class CompileStep {
+  void process(CompileElement parent, CompileElement current,
+      compileControlModule.CompileControl control);
 }

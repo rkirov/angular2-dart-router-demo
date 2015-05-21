@@ -1,15 +1,16 @@
 library angular2.src.forms.directives;
 
 import "package:angular2/src/core/annotations_impl/annotations.dart"
-    show Directive, onChange;
+    show Directive;
 import "package:angular2/src/core/annotations_impl/visibility.dart"
     show Ancestor;
 import "package:angular2/src/core/compiler/element_ref.dart" show ElementRef;
 import "package:angular2/src/di/annotations_impl.dart" show Optional;
 import "package:angular2/src/render/api.dart" show Renderer;
-import "package:angular2/src/facade/lang.dart" show isPresent, isString;
+import "package:angular2/src/facade/lang.dart"
+    show isPresent, isString, isBlank, BaseException;
 import "package:angular2/src/facade/collection.dart" show ListWrapper;
-import "model.dart" show ControlGroup;
+import "model.dart" show ControlGroup, Control, isControl;
 import "validators.dart" show Validators;
 //export interface ControlValueAccessor {
 
@@ -18,7 +19,21 @@ import "validators.dart" show Validators;
 //  set onChange(fn){}
 
 //}
-
+dynamic _lookupControl(
+    ControlGroupDirective groupDirective, dynamic controlOrName) {
+  if (isControl(controlOrName)) {
+    return controlOrName;
+  }
+  if (isBlank(groupDirective)) {
+    throw new BaseException(
+        '''No control group found for "${ controlOrName}"''');
+  }
+  var control = groupDirective.findControl(controlOrName);
+  if (isBlank(control)) {
+    throw new BaseException('''Cannot find control "${ controlOrName}"''');
+  }
+  return control;
+}
 /**
  * The default accessor for writing a value and listening to changes that is used by a {@link Control} directive.
  *
@@ -111,28 +126,21 @@ class CheckboxControlValueAccessor {
  * @exportedAs angular2/forms
  */
 @Directive(
-    lifecycle: const [onChange],
-    selector: "[control]",
-    properties: const {"controlOrName": "control"})
+    selector: "[control]", properties: const {"controlOrName": "control"})
 class ControlDirective {
   ControlGroupDirective _groupDirective;
-  dynamic controlOrName;
+  dynamic _controlOrName;
   dynamic valueAccessor;
   Function validator;
   ControlDirective(@Optional() @Ancestor() ControlGroupDirective groupDirective,
       DefaultValueAccessor valueAccessor) {
     this._groupDirective = groupDirective;
-    this.controlOrName = null;
+    this._controlOrName = null;
     this.valueAccessor = valueAccessor;
     this.validator = Validators.nullValidator;
   }
-  // TODO: vsavkin this should be moved into the constructor once static bindings
-
-  // are implemented
-  onChange(_) {
-    this._initialize();
-  }
-  _initialize() {
+  set controlOrName(controlOrName) {
+    this._controlOrName = controlOrName;
     if (isPresent(this._groupDirective)) {
       this._groupDirective.addDirective(this);
     }
@@ -149,11 +157,7 @@ class ControlDirective {
         (newValue) => this._control().updateValue(newValue);
   }
   _control() {
-    if (isString(this.controlOrName)) {
-      return this._groupDirective.findControl(this.controlOrName);
-    } else {
-      return this.controlOrName;
-    }
+    return _lookupControl(this._groupDirective, this._controlOrName);
   }
 }
 /**
@@ -198,23 +202,18 @@ class ControlDirective {
  */
 @Directive(
     selector: "[control-group]",
-    properties: const {"controlGroup": "control-group"})
+    properties: const {"controlOrName": "control-group"})
 class ControlGroupDirective {
   ControlGroupDirective _groupDirective;
-  String _controlGroupName;
-  ControlGroup _controlGroup;
   List<ControlDirective> _directives;
+  dynamic _controlOrName;
   ControlGroupDirective(
       @Optional() @Ancestor() ControlGroupDirective groupDirective) {
     this._groupDirective = groupDirective;
     this._directives = ListWrapper.create();
   }
-  set controlGroup(controlGroup) {
-    if (isString(controlGroup)) {
-      this._controlGroupName = controlGroup;
-    } else {
-      this._controlGroup = controlGroup;
-    }
+  set controlOrName(controlOrName) {
+    this._controlOrName = controlOrName;
     this._updateDomValue();
   }
   _updateDomValue() {
@@ -227,11 +226,7 @@ class ControlGroupDirective {
     return this._getControlGroup().controls[name];
   }
   ControlGroup _getControlGroup() {
-    if (isPresent(this._controlGroupName)) {
-      return this._groupDirective.findControl(this._controlGroupName);
-    } else {
-      return this._controlGroup;
-    }
+    return _lookupControl(this._groupDirective, this._controlOrName);
   }
 }
 /**

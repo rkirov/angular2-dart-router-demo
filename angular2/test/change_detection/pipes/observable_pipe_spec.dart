@@ -21,7 +21,7 @@ import "package:angular2/src/change_detection/pipes/observable_pipe.dart"
 import "package:angular2/src/change_detection/change_detector_ref.dart"
     show ChangeDetectorRef;
 import "package:angular2/src/facade/async.dart"
-    show EventEmitter, Stream, ObservableWrapper, PromiseWrapper;
+    show EventEmitter, Stream, ObservableWrapper, TimerWrapper;
 
 main() {
   describe("ObservablePipe", () {
@@ -51,7 +51,7 @@ main() {
           [AsyncTestCompleter], (async) {
         pipe.transform(emitter);
         ObservableWrapper.callNext(emitter, message);
-        PromiseWrapper.setTimeout(() {
+        TimerWrapper.setTimeout(() {
           expect(pipe.transform(emitter)).toEqual(new WrappedValue(message));
           async.done();
         }, 0);
@@ -60,7 +60,7 @@ main() {
           inject([AsyncTestCompleter], (async) {
         pipe.transform(emitter);
         ObservableWrapper.callNext(emitter, message);
-        PromiseWrapper.setTimeout(() {
+        TimerWrapper.setTimeout(() {
           pipe.transform(emitter);
           expect(pipe.transform(emitter)).toBe(message);
           async.done();
@@ -73,7 +73,7 @@ main() {
         expect(pipe.transform(newEmitter)).toBe(null);
         // this should not affect the pipe
         ObservableWrapper.callNext(emitter, message);
-        PromiseWrapper.setTimeout(() {
+        TimerWrapper.setTimeout(() {
           expect(pipe.transform(newEmitter)).toBe(null);
           async.done();
         }, 0);
@@ -82,7 +82,7 @@ main() {
           inject([AsyncTestCompleter], (async) {
         pipe.transform(emitter);
         ObservableWrapper.callNext(emitter, message);
-        PromiseWrapper.setTimeout(() {
+        TimerWrapper.setTimeout(() {
           expect(ref.spy("requestCheck")).toHaveBeenCalled();
           async.done();
         }, 0);
@@ -97,7 +97,7 @@ main() {
         pipe.transform(emitter);
         pipe.onDestroy();
         ObservableWrapper.callNext(emitter, message);
-        PromiseWrapper.setTimeout(() {
+        TimerWrapper.setTimeout(() {
           expect(pipe.transform(emitter)).toBe(null);
           async.done();
         }, 0);

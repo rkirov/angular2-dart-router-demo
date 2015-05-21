@@ -26,8 +26,11 @@ class Ruler {
     this.domAdapter = domAdapter;
   }
   Future<Rectangle> measure(ElementRef el) {
-    var clntRect = this.domAdapter.getBoundingClientRect(el.domElement);
-    //even if getBoundingClientRect is synchronous we use async API in preparation for further changes
+    var clntRect =
+        (this.domAdapter.getBoundingClientRect(el.domElement) as dynamic);
+    // even if getBoundingClientRect is synchronous we use async API in preparation for further
+
+    // changes
     return PromiseWrapper.resolve(new Rectangle(
         clntRect.left, clntRect.top, clntRect.width, clntRect.height));
   }

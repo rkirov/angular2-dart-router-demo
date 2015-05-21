@@ -7,6 +7,7 @@ import "package:angular2/src/facade/collection.dart" show Map, StringMapWrapper;
 import "package:angular2/src/facade/lang.dart" show isPresent;
 import "package:angular2/src/dom/dom_adapter.dart" show DOM;
 import "router.dart" show Router;
+import "location.dart" show Location;
 
 /**
  * The RouterLink directive lets you link to specific parts of your app.
@@ -36,32 +37,38 @@ import "router.dart" show Router;
 class RouterLink {
   var _domEl;
   String _route;
-  dynamic _params;
+  Map<String, String> _params;
   Router _router;
-  String _href;
-  RouterLink(ElementRef elementRef, Router router) {
+  Location _location;
+  // the url displayed on the anchor element.
+  String _visibleHref;
+  // the url passed to the router navigation.
+  String _navigationHref;
+  RouterLink(ElementRef elementRef, Router router, Location location) {
     this._domEl = elementRef.domElement;
     this._router = router;
+    this._location = location;
     this._params = StringMapWrapper.create();
     DOM.on(this._domEl, "click", (evt) {
       evt.preventDefault();
-      this._router.navigate(this._href);
+      this._router.navigate(this._navigationHref);
     });
   }
-  set route(changes) {
+  set route(String changes) {
     this._route = changes;
   }
-  set params(changes) {
+  set params(Map changes) {
     this._params = changes;
   }
-  onAllChangesDone() {
+  void onAllChangesDone() {
     if (isPresent(this._route) && isPresent(this._params)) {
-      var newHref = this._router.generate(this._route, this._params);
-      this._href = newHref;
+      this._navigationHref = this._router.generate(this._route, this._params);
+      this._visibleHref =
+          this._location.normalizeAbsolutely(this._navigationHref);
       // Keeping the link on the element to support contextual menu `copy link`
 
       // and other in-browser affordances.
-      DOM.setAttribute(this._domEl, "href", newHref);
+      DOM.setAttribute(this._domEl, "href", this._visibleHref);
     }
   }
 }

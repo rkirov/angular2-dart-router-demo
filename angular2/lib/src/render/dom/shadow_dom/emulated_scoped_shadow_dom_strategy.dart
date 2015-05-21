@@ -38,24 +38,24 @@ class EmulatedScopedShadowDomStrategy
     /* super call moved to initializer */;
     this.styleInliner = styleInliner;
   }
-  Future processStyleElement(
+  Future<dynamic> processStyleElement(
       String hostComponentId, String templateUrl, styleEl) {
     var cssText = DOM.getText(styleEl);
     cssText = this.styleUrlResolver.resolveUrls(cssText, templateUrl);
-    var css = this.styleInliner.inlineImports(cssText, templateUrl);
-    if (PromiseWrapper.isPromise(css)) {
+    var inlinedCss = this.styleInliner.inlineImports(cssText, templateUrl);
+    if (PromiseWrapper.isPromise(inlinedCss)) {
       DOM.setText(styleEl, "");
-      return css.then((css) {
+      return ((inlinedCss as Future<String>)).then((css) {
         css = shimCssForComponent(css, hostComponentId);
         DOM.setText(styleEl, css);
       });
     } else {
-      css = shimCssForComponent(css, hostComponentId);
+      var css = shimCssForComponent((inlinedCss as String), hostComponentId);
       DOM.setText(styleEl, css);
+      DOM.remove(styleEl);
+      insertStyleElement(this.styleHost, styleEl);
+      return null;
     }
-    DOM.remove(styleEl);
-    insertStyleElement(this.styleHost, styleEl);
-    return null;
   }
   processElement(String hostComponentId, String elementComponentId, element) {
     // Shim the element as a child of the compiled component

@@ -29,7 +29,6 @@ main() {
           [StyleInliner], (inliner) {
         var css = ".main {}";
         var loadedCss = inliner.inlineImports(css, "http://base");
-        expect(loadedCss).not.toBePromise();
         expect(loadedCss).toEqual(css);
       }));
       it("should inline @import rules", inject([
@@ -202,7 +201,7 @@ class FakeXHR extends XHR {
   Future<String> get(String url) {
     var response = MapWrapper.get(this._responses, url);
     if (isBlank(response)) {
-      return PromiseWrapper.reject("xhr error");
+      return PromiseWrapper.reject("xhr error", null);
     }
     return PromiseWrapper.resolve(response);
   }

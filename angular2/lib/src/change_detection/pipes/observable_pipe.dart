@@ -4,12 +4,7 @@ import "package:angular2/src/facade/async.dart" show Stream, ObservableWrapper;
 import "package:angular2/src/facade/lang.dart" show isBlank, isPresent;
 import "pipe.dart" show Pipe, WrappedValue, PipeFactory;
 import "../change_detector_ref.dart" show ChangeDetectorRef;
-// HACK: workaround for Traceur behavior.
 
-// It expects all transpiled modules to contain this marker.
-
-// TODO: remove this when we no longer use traceur
-var ___esModule = true;
 /**
  * Implements async bindings to Observable.
  *
@@ -26,7 +21,7 @@ var ___esModule = true;
  *   changeDetection: ON_PUSH
  * })
  * @View({
- *  inline: "Task Description {{description|async}}"
+ *   template: "Task Description {{ description | async }}"
  * })
  * class Task {
  *  description:Observable<string>;

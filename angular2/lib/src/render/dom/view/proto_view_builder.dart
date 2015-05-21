@@ -24,10 +24,12 @@ class ProtoViewBuilder {
   var rootElement;
   Map<String, String> variableBindings;
   List<ElementBinderBuilder> elements;
-  ProtoViewBuilder(rootElement) {
+  num type;
+  ProtoViewBuilder(rootElement, num type) {
     this.rootElement = rootElement;
     this.elements = [];
     this.variableBindings = MapWrapper.create();
+    this.type = type;
   }
   ElementBinderBuilder bindElement(element, [description = null]) {
     var builder =
@@ -39,9 +41,11 @@ class ProtoViewBuilder {
   bindVariable(name, value) {
     // Store the variable map from value to variable, reflecting how it will be used later by
 
-    // DomView. When a local is set to the view, a lookup for the variable name will take place keyed
+    // DomView. When a local is set to the view, a lookup for the variable name will take place
 
-    // by the "value", or exported identifier. For example, ng-repeat sets a view local of "index".
+    // keyed
+
+    // by the "value", or exported identifier. For example, ng-for sets a view local of "index".
 
     // When this occurs, a lookup keyed by "index" must occur to find if there is a var referencing
 
@@ -106,6 +110,7 @@ class ProtoViewBuilder {
     return new api.ProtoViewDto(
         render: new DomProtoViewRef(new DomProtoView(
             element: this.rootElement, elementBinders: renderElementBinders)),
+        type: this.type,
         elementBinders: apiElementBinders,
         variableBindings: this.variableBindings);
   }
@@ -166,14 +171,15 @@ class ElementBinderBuilder {
     if (isPresent(this.nestedProtoView)) {
       throw new BaseException("Only one nested view per element is allowed");
     }
-    this.nestedProtoView = new ProtoViewBuilder(rootElement);
+    this.nestedProtoView =
+        new ProtoViewBuilder(rootElement, api.ProtoViewDto.EMBEDDED_VIEW_TYPE);
     return this.nestedProtoView;
   }
   bindProperty(name, expression) {
     MapWrapper.set(this.propertyBindings, name, expression);
-    //TODO: required for Dart transformers. Remove when Dart transformers
+    // TODO: required for Dart transformers. Remove when Dart transformers
 
-    //run all the steps of the render compiler
+    // run all the steps of the render compiler
     setterFactory(name);
   }
   bindVariable(name, value) {
@@ -187,11 +193,15 @@ class ElementBinderBuilder {
     } else {
       // Store the variable map from value to variable, reflecting how it will be used later by
 
-      // DomView. When a local is set to the view, a lookup for the variable name will take place keyed
+      // DomView. When a local is set to the view, a lookup for the variable name will take place
 
-      // by the "value", or exported identifier. For example, ng-repeat sets a view local of "index".
+      // keyed
 
-      // When this occurs, a lookup keyed by "index" must occur to find if there is a var referencing
+      // by the "value", or exported identifier. For example, ng-for sets a view local of "index".
+
+      // When this occurs, a lookup keyed by "index" must occur to find if there is a var
+
+      // referencing
 
       // it.
       MapWrapper.set(this.variableBindings, value, name);
@@ -276,12 +286,13 @@ class EventBuilder extends AstTransformer {
   }
   visitAccessMember(AccessMember ast) {
     var isEventAccess = false;
-    var current = ast;
+    AST current = ast;
     while (!isEventAccess && (current is AccessMember)) {
-      if (current.name == "\$event") {
+      var am = (current as AccessMember);
+      if (am.name == "\$event") {
         isEventAccess = true;
       }
-      current = current.receiver;
+      current = am.receiver;
     }
     if (isEventAccess) {
       ListWrapper.push(this.locals, ast);

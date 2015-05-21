@@ -12,6 +12,7 @@ import "package:angular2/test_lib.dart"
         expect,
         iit,
         inject,
+        IS_DARTIUM,
         beforeEachBindings,
         it,
         xit;
@@ -33,16 +34,14 @@ import "package:angular2/change_detection.dart"
         ON_PUSH;
 import "package:angular2/src/core/annotations_impl/annotations.dart"
     show Directive, Component;
-import "package:angular2/src/core/compiler/dynamic_component_loader.dart"
-    show DynamicComponentLoader;
 import "package:angular2/src/core/compiler/query_list.dart" show QueryList;
 import "package:angular2/src/core/annotations_impl/view.dart" show View;
 import "package:angular2/src/core/annotations_impl/visibility.dart"
-    show Parent, Ancestor;
+    show Parent, Ancestor, Unbounded;
 import "package:angular2/src/core/annotations_impl/di.dart"
     show Attribute, Query;
-import "package:angular2/src/directives/if.dart" show If;
-import "package:angular2/src/directives/for.dart" show For;
+import "package:angular2/src/directives/ng_if.dart" show NgIf;
+import "package:angular2/src/directives/ng_for.dart" show NgFor;
 import "package:angular2/src/core/compiler/view_container_ref.dart"
     show ViewContainerRef;
 import "package:angular2/src/core/compiler/view_ref.dart" show ProtoViewRef;
@@ -505,11 +504,11 @@ main() {
           inject([TestBed, AsyncTestCompleter], (tb, async) {
         tb.overrideView(MyComp, new View(template: '''
             <some-directive>
-              <p *if="true">
+              <p *ng-if="true">
                 <cmp-with-ancestor #child></cmp-with-ancestor>
               </p>
             </some-directive>''',
-            directives: [SomeDirective, CompWithAncestor, If]));
+            directives: [SomeDirective, CompWithAncestor, NgIf]));
         tb.createView(MyComp, context: ctx).then((view) {
           view.detectChanges();
           var subview = view.rawView.viewContainers[1].views[0];
@@ -535,6 +534,26 @@ main() {
             async.done();
           });
           emitter.fireEvent("fired !");
+        });
+      }));
+      it("should support [()] syntax", inject([
+        TestBed,
+        AsyncTestCompleter
+      ], (tb, async) {
+        tb.overrideView(MyComp, new View(
+            template: "<div [(control)]=\"ctxProp\" two-way></div>",
+            directives: [DirectiveWithTwoWayBinding]));
+        tb.createView(MyComp, context: ctx).then((view) {
+          var injector = view.rawView.elementInjectors[0];
+          var dir = injector.get(DirectiveWithTwoWayBinding);
+          ctx.ctxProp = "one";
+          view.detectChanges();
+          expect(dir.value).toEqual("one");
+          ObservableWrapper.subscribe(dir.control, (_) {
+            expect(ctx.ctxProp).toEqual("two");
+            async.done();
+          });
+          dir.triggerChange("two");
         });
       }));
       if (DOM.supportsDOMEvents()) {
@@ -647,9 +666,9 @@ main() {
       it("should support render global events from multiple directives", inject(
           [TestBed, AsyncTestCompleter], (tb, async) {
         tb.overrideView(MyComp, new View(
-            template: "<div *if=\"ctxBoolProp\" listener listenerother></div>",
+            template: "<div *ng-if=\"ctxBoolProp\" listener listenerother></div>",
             directives: [
-          If,
+          NgIf,
           DirectiveListeningDomEvent,
           DirectiveListeningDomEventOther
         ]));
@@ -714,7 +733,104 @@ main() {
         });
       }));
     });
+    describe("dependency injection", () {
+      it("should support hostInjector", inject([
+        TestBed,
+        AsyncTestCompleter
+      ], (tb, async) {
+        tb.overrideView(MyComp, new View(template: '''
+            <directive-providing-injectable>
+              <directive-consuming-injectable #consuming>
+              </directive-consuming-injectable>
+            </directive-providing-injectable>
+          ''',
+            directives: [
+          DirectiveProvidingInjectable,
+          DirectiveConsumingInjectable
+        ]));
+        tb.createView(MyComp, context: ctx).then((view) {
+          var comp = view.rawView.locals.get("consuming");
+          expect(comp.injectable).toBeAnInstanceOf(Injectable);
+          async.done();
+        });
+      }));
+      it("should support viewInjector", inject([
+        TestBed,
+        AsyncTestCompleter
+      ], (tb, async) {
+        tb.overrideView(DirectiveProvidingInjectableInView, new View(
+            template: '''
+              <directive-consuming-injectable #consuming>
+              </directive-consuming-injectable>
+          ''', directives: [DirectiveConsumingInjectable]));
+        tb
+            .createView(DirectiveProvidingInjectableInView,
+                context: new DirectiveProvidingInjectableInView())
+            .then((view) {
+          var comp = view.rawView.locals.get("consuming");
+          expect(comp.injectable).toBeAnInstanceOf(Injectable);
+          async.done();
+        });
+      }));
+      it("should support unbounded lookup", inject([
+        TestBed,
+        AsyncTestCompleter
+      ], (tb, async) {
+        tb.overrideView(MyComp, new View(template: '''
+            <directive-providing-injectable>
+              <directive-containing-directive-consuming-an-injectable #dir>
+              </directive-containing-directive-consuming-an-injectable>
+            </directive-providing-injectable>
+          ''',
+            directives: [
+          DirectiveProvidingInjectable,
+          DirectiveContainingDirectiveConsumingAnInjectable
+        ]));
+        tb.overrideView(DirectiveContainingDirectiveConsumingAnInjectable,
+            new View(template: '''
+            <directive-consuming-injectable-unbounded></directive-consuming-injectable-unbounded>
+          ''', directives: [DirectiveConsumingInjectableUnbounded]));
+        tb.createView(MyComp, context: ctx).then((view) {
+          var comp = view.rawView.locals.get("dir");
+          expect(comp.directive.injectable).toBeAnInstanceOf(Injectable);
+          async.done();
+        });
+      }));
+    });
     describe("error handling", () {
+      it("should report a meaningful error when a directive is missing annotation",
+          inject([TestBed, AsyncTestCompleter], (tb, async) {
+        tb.overrideView(
+            MyComp, new View(directives: [SomeDirectiveMissingAnnotation]));
+        PromiseWrapper.catchError(tb.createView(MyComp, context: ctx), (e) {
+          expect(e.message).toEqual(
+              "No Directive annotation found on SomeDirectiveMissingAnnotation");
+          async.done();
+        });
+      }));
+      it("should report a meaningful error when a directive is null", inject([
+        TestBed,
+        AsyncTestCompleter
+      ], (tb, async) {
+        tb.overrideView(MyComp, new View(directives: [[null]]));
+        PromiseWrapper.catchError(tb.createView(MyComp, context: ctx), (e) {
+          expect(e.message).toEqual(
+              "Unexpected directive value 'null' on the View of component 'MyComp'");
+          async.done();
+        });
+      }));
+      if (!IS_DARTIUM) {
+        it("should report a meaningful error when a directive is undefined",
+            inject([TestBed, AsyncTestCompleter], (tb, async) {
+          var undefinedValue;
+          tb.overrideView(MyComp, new View(directives: [undefinedValue]));
+          PromiseWrapper.catchError(tb.createView(MyComp, context: ctx), (e) {
+            expect(e.message).toEqual(
+                "Unexpected directive value 'undefined' on the View of component 'MyComp'");
+            async.done();
+          });
+        }));
+      }
       it("should specify a location of an error that happened during change detection (text)",
           inject([TestBed, AsyncTestCompleter], (tb, async) {
         tb.overrideView(MyComp, new View(template: "{{a.b}}"));
@@ -794,84 +910,19 @@ main() {
           AsyncTestCompleter
         ], (tb, async) {
           expectCompileError(tb,
-              "<div><template *if=\"condition\"></template></div>",
-              "Missing directive to handle: <template *if=\"condition\">",
+              "<div><template *ng-if=\"condition\"></template></div>",
+              "Missing directive to handle: <template *ng-if=\"condition\">",
               () => async.done());
         }));
         it("should raise an error for missing template directive (3)", inject([
           TestBed,
           AsyncTestCompleter
         ], (tb, async) {
-          expectCompileError(tb, "<div *if=\"condition\"></div>",
-              "Missing directive to handle 'if' in MyComp: <div *if=\"condition\">",
+          expectCompileError(tb, "<div *ng-if=\"condition\"></div>",
+              "Missing directive to handle 'if' in MyComp: <div *ng-if=\"condition\">",
               () => async.done());
         }));
       }
-    });
-    describe("dependency injection", () {
-      it("should publish parent component to shadow DOM via publishAs", inject([
-        TestBed,
-        AsyncTestCompleter,
-        Compiler
-      ], (tb, async, compiler) {
-        tb.overrideView(MyComp, new View(
-            template: '''<parent></parent>''', directives: [ParentComponent]));
-        tb.createView(MyComp).then((view) {
-          view.detectChanges();
-          expect(view.rootNodes).toHaveText("Parent,Parent");
-          async.done();
-        });
-      }));
-      it("should override parent bindings via publishAs", inject([
-        TestBed,
-        AsyncTestCompleter,
-        Compiler
-      ], (tb, async, compiler) {
-        tb.overrideView(MyComp, new View(
-            template: '''<recursive-parent></recursive-parent>''',
-            directives: [RecursiveParentComponent]));
-        tb.createView(MyComp).then((view) {
-          view.detectChanges();
-          expect(view.rootNodes)
-              .toHaveText("ParentInterface,RecursiveParent,RecursiveParent");
-          async.done();
-        });
-      }));
-      // [DynamicComponentLoader] already supports providing a custom
-
-      // injector as an argument to `loadIntoExistingLocation`, which should
-
-      // be used instead of `publishAs`.
-
-      //
-
-      // Conceptually dynamically loaded components are loaded _instead_ of
-
-      // the dynamic component itself. The dynamic component does not own the
-
-      // shadow DOM. It's the loaded component that creates that shadow DOM.
-      it("should not publish into dynamically instantiated components via publishAs",
-          inject([
-        TestBed,
-        AsyncTestCompleter,
-        Compiler
-      ], (tb, async, compiler) {
-        tb.overrideView(MyComp, new View(
-            template: '''<dynamic-parent #cmp></dynamic-parent>''',
-            directives: [DynamicParentComponent]));
-        tb.createView(MyComp).then((view) {
-          view.detectChanges();
-          var comp = view.rawView.locals.get("cmp");
-          PromiseWrapper.then(comp.done, (value) {
-            throw new BaseException(
-                '''Expected to throw error, but got value ${ value}''');
-          }, (err) {
-            expect(err.message).toEqual(
-                "No provider for ParentInterface! (ChildComponent -> ParentInterface)");
-            async.done();
-          });
-        });
-      }));
     });
   });
 }
@@ -961,7 +1012,7 @@ class MyComp {
 class ComponentWithPipes {
   String prop;
 }
-@Component(selector: "child-cmp", injectables: const [MyService])
+@Component(selector: "child-cmp", appInjector: const [MyService])
 @View(directives: const [MyDir], template: "{{ctxProp}}")
 class ChildComp {
   String ctxProp;
@@ -981,6 +1032,7 @@ class ChildCompUsingService {
 }
 @Directive(selector: "some-directive")
 class SomeDirective {}
+class SomeDirectiveMissingAnnotation {}
 @Component(selector: "cmp-with-parent")
 @View(
     template: "<p>Component with an injected parent</p>",
@@ -1001,7 +1053,7 @@ class CompWithAncestor {
     this.myAncestor = someComp;
   }
 }
-@Component(selector: "[child-cmp2]", injectables: const [MyService])
+@Component(selector: "[child-cmp2]", appInjector: const [MyService])
 class ChildComp2 {
   String ctxProp;
   String dirProp;
@@ -1172,65 +1224,6 @@ class NeedsPublicApi {
     expect(api is PrivateImpl).toBe(true);
   }
 }
-class ParentInterface {
-  String message;
-  ParentInterface() {
-    this.message = "ParentInterface";
-  }
-}
-@Component(selector: "parent", publishAs: const [ParentInterface])
-@View(template: '''<child></child>''', directives: const [ChildComponent])
-class ParentComponent extends ParentInterface {
-  String message;
-  ParentComponent() : super() {
-    /* super call moved to initializer */;
-    this.message = "Parent";
-  }
-}
-@Component(
-    injectables: const [ParentInterface],
-    selector: "recursive-parent",
-    publishAs: const [ParentInterface])
-@View(
-    template: '''{{parentService.message}},<child></child>''',
-    directives: const [ChildComponent])
-class RecursiveParentComponent extends ParentInterface {
-  ParentInterface parentService;
-  String message;
-  RecursiveParentComponent(ParentInterface parentService) : super() {
-    /* super call moved to initializer */;
-    this.message = "RecursiveParent";
-    this.parentService = parentService;
-  }
-}
-@Component(selector: "dynamic-parent", publishAs: const [ParentInterface])
-class DynamicParentComponent extends ParentInterface {
-  String message;
-  var done;
-  DynamicParentComponent(DynamicComponentLoader loader, ElementRef location)
-      : super() {
-    /* super call moved to initializer */;
-    this.message = "DynamicParent";
-    this.done = loader.loadIntoExistingLocation(ChildComponent, location);
-  }
-}
-class AppDependency {
-  ParentInterface parent;
-  AppDependency(ParentInterface p) {
-    this.parent = p;
-  }
-}
-@Component(selector: "child", injectables: const [AppDependency])
-@View(
-    template: '''<div>{{parent.message}}</div>,<div>{{appDependency.parent.message}}</div>''')
-class ChildComponent {
-  ParentInterface parent;
-  AppDependency appDependency;
-  ChildComponent(ParentInterface p, AppDependency a) {
-    this.parent = p;
-    this.appDependency = a;
-  }
-}
 @Directive(
     selector: "[toolbar-vc]", properties: const {"toolbarVc": "toolbarVc"})
 class ToolbarViewContainer {
@@ -1254,13 +1247,59 @@ class ToolbarPart {
 }
 @Component(selector: "toolbar")
 @View(
-    template: "TOOLBAR(<div *for=\"var part of query\" [toolbar-vc]=\"part\"></div>)",
-    directives: const [ToolbarViewContainer, For])
+    template: "TOOLBAR(<div *ng-for=\"var part of query\" [toolbar-vc]=\"part\"></div>)",
+    directives: const [ToolbarViewContainer, NgFor])
 class ToolbarComponent {
   QueryList query;
   String ctxProp;
   ToolbarComponent(@Query(ToolbarPart) QueryList query) {
     this.ctxProp = "hello world";
     this.query = query;
+  }
+}
+@Directive(
+    selector: "[two-way]",
+    properties: const {"value": "control"},
+    events: const ["control"])
+class DirectiveWithTwoWayBinding {
+  EventEmitter control;
+  dynamic value;
+  DirectiveWithTwoWayBinding() {
+    this.control = new EventEmitter();
+  }
+  triggerChange(value) {
+    ObservableWrapper.callNext(this.control, value);
+  }
+}
+class Injectable {}
+@Directive(
+    selector: "directive-providing-injectable",
+    hostInjector: const [Injectable])
+class DirectiveProvidingInjectable {}
+@Component(
+    selector: "directive-providing-injectable",
+    viewInjector: const [Injectable])
+@View(template: "")
+class DirectiveProvidingInjectableInView {}
+@Component(selector: "directive-consuming-injectable")
+@View(template: "")
+class DirectiveConsumingInjectable {
+  var injectable;
+  DirectiveConsumingInjectable(@Ancestor() Injectable injectable) {
+    this.injectable = injectable;
+  }
+}
+@Component(selector: "directive-containing-directive-consuming-an-injectable")
+class DirectiveContainingDirectiveConsumingAnInjectable {
+  var directive;
+}
+@Component(selector: "directive-consuming-injectable-unbounded")
+@View(template: "")
+class DirectiveConsumingInjectableUnbounded {
+  var injectable;
+  DirectiveConsumingInjectableUnbounded(@Unbounded() Injectable injectable,
+      @Ancestor() DirectiveContainingDirectiveConsumingAnInjectable parent) {
+    this.injectable = injectable;
+    parent.directive = this;
   }
 }

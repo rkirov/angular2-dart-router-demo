@@ -20,7 +20,7 @@ class NativeShadowDomStrategy extends ShadowDomStrategy {
   prepareShadowRoot(el) {
     return DOM.createShadowRoot(el);
   }
-  Future processStyleElement(
+  Future<dynamic> processStyleElement(
       String hostComponentId, String templateUrl, styleEl) {
     var cssText = DOM.getText(styleEl);
     cssText = this.styleUrlResolver.resolveUrls(cssText, templateUrl);

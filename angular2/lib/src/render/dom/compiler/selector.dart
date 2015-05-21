@@ -28,8 +28,8 @@ var _SELECTOR_REGEXP = RegExpWrapper.create("(\\:not\\()|" +
  */
 class CssSelector {
   String element;
-  List classNames;
-  List attrs;
+  List<String> classNames;
+  List<String> attrs;
   CssSelector notSelector;
   static List<CssSelector> parse(String selector) {
     var results = ListWrapper.create();
@@ -133,13 +133,18 @@ class CssSelector {
  * are contained in a given CssSelector.
  */
 class SelectorMatcher {
-  Map _elementMap;
-  Map _elementPartialMap;
-  Map _classMap;
-  Map _classPartialMap;
-  Map _attrValueMap;
-  Map _attrValuePartialMap;
-  List _listContexts;
+  static createNotMatcher(CssSelector notSelector) {
+    var notMatcher = new SelectorMatcher();
+    notMatcher._addSelectable(notSelector, null, null);
+    return notMatcher;
+  }
+  Map<String, List<String>> _elementMap;
+  Map<String, SelectorMatcher> _elementPartialMap;
+  Map<String, List<String>> _classMap;
+  Map<String, SelectorMatcher> _classPartialMap;
+  Map<String, Map<String, List<String>>> _attrValueMap;
+  Map<String, Map<String, SelectorMatcher>> _attrValuePartialMap;
+  List<SelectorListContext> _listContexts;
   SelectorMatcher() {
     this._elementMap = MapWrapper.create();
     this._elementPartialMap = MapWrapper.create();
@@ -149,14 +154,14 @@ class SelectorMatcher {
     this._attrValuePartialMap = MapWrapper.create();
     this._listContexts = ListWrapper.create();
   }
-  addSelectables(List<CssSelector> cssSelectors, callbackCtxt) {
+  addSelectables(List<CssSelector> cssSelectors, dynamic callbackCtxt) {
     var listContext = null;
     if (cssSelectors.length > 1) {
       listContext = new SelectorListContext(cssSelectors);
       ListWrapper.push(this._listContexts, listContext);
     }
     for (var i = 0; i < cssSelectors.length; i++) {
-      this.addSelectable(cssSelectors[i], callbackCtxt, listContext);
+      this._addSelectable(cssSelectors[i], callbackCtxt, listContext);
     }
   }
   /**
@@ -164,7 +169,8 @@ class SelectorMatcher {
    * @param cssSelector A css selector
    * @param callbackCtxt An opaque object that will be given to the callback of the `match` function
    */
-  addSelectable(cssSelector, callbackCtxt, SelectorListContext listContext) {
+  _addSelectable(CssSelector cssSelector, dynamic callbackCtxt,
+      SelectorListContext listContext) {
     var matcher = this;
     var element = cssSelector.element;
     var classNames = cssSelector.classNames;
@@ -197,22 +203,28 @@ class SelectorMatcher {
         var isTerminal = identical(index, attrs.length - 2);
         var attrName = attrs[index++];
         var attrValue = attrs[index++];
-        var map =
-            isTerminal ? matcher._attrValueMap : matcher._attrValuePartialMap;
-        var valuesMap = MapWrapper.get(map, attrName);
-        if (isBlank(valuesMap)) {
-          valuesMap = MapWrapper.create();
-          MapWrapper.set(map, attrName, valuesMap);
-        }
         if (isTerminal) {
-          this._addTerminal(valuesMap, attrValue, selectable);
+          var terminalMap = matcher._attrValueMap;
+          var terminalValuesMap = MapWrapper.get(terminalMap, attrName);
+          if (isBlank(terminalValuesMap)) {
+            terminalValuesMap = MapWrapper.create();
+            MapWrapper.set(terminalMap, attrName, terminalValuesMap);
+          }
+          this._addTerminal(terminalValuesMap, attrValue, selectable);
         } else {
-          matcher = this._addPartial(valuesMap, attrValue);
+          var parttialMap = matcher._attrValuePartialMap;
+          var partialValuesMap = MapWrapper.get(parttialMap, attrName);
+          if (isBlank(partialValuesMap)) {
+            partialValuesMap = MapWrapper.create();
+            MapWrapper.set(parttialMap, attrName, partialValuesMap);
+          }
+          matcher = this._addPartial(partialValuesMap, attrValue);
         }
       }
     }
   }
-  _addTerminal(Map<String, String> map, String name, selectable) {
+  _addTerminal(
+      Map<String, List<String>> map, String name, SelectorContext selectable) {
     var terminalList = MapWrapper.get(map, name);
     if (isBlank(terminalList)) {
       terminalList = ListWrapper.create();
@@ -220,7 +232,7 @@ class SelectorMatcher {
     }
     ListWrapper.push(terminalList, selectable);
   }
-  _addPartial(Map<String, String> map, String name) {
+  SelectorMatcher _addPartial(Map<String, SelectorMatcher> map, String name) {
     var matcher = MapWrapper.get(map, name);
     if (isBlank(matcher)) {
       matcher = new SelectorMatcher();
@@ -235,7 +247,7 @@ class SelectorMatcher {
    * @param matchedCallback This callback will be called with the object handed into `addSelectable`
    * @return boolean true if a match was found
   */
-  bool match(CssSelector cssSelector, Function matchedCallback) {
+  bool match(CssSelector cssSelector, matchedCallback) {
     var result = false;
     var element = cssSelector.element;
     var classNames = cssSelector.classNames;
@@ -264,25 +276,26 @@ class SelectorMatcher {
       for (var index = 0; index < attrs.length;) {
         var attrName = attrs[index++];
         var attrValue = attrs[index++];
-        var valuesMap = MapWrapper.get(this._attrValueMap, attrName);
+        var terminalValuesMap = MapWrapper.get(this._attrValueMap, attrName);
         if (!StringWrapper.equals(attrValue, _EMPTY_ATTR_VALUE)) {
-          result = this._matchTerminal(
-                  valuesMap, _EMPTY_ATTR_VALUE, cssSelector, matchedCallback) ||
+          result = this._matchTerminal(terminalValuesMap, _EMPTY_ATTR_VALUE,
+                  cssSelector, matchedCallback) ||
               result;
         }
         result = this._matchTerminal(
-                valuesMap, attrValue, cssSelector, matchedCallback) ||
+                terminalValuesMap, attrValue, cssSelector, matchedCallback) ||
             result;
-        valuesMap = MapWrapper.get(this._attrValuePartialMap, attrName);
+        var partialValuesMap =
+            MapWrapper.get(this._attrValuePartialMap, attrName);
         result = this._matchPartial(
-                valuesMap, attrValue, cssSelector, matchedCallback) ||
+                partialValuesMap, attrValue, cssSelector, matchedCallback) ||
             result;
       }
     }
     return result;
   }
-  bool _matchTerminal(
-      [Map<String, String> map = null, name, cssSelector, matchedCallback]) {
+  bool _matchTerminal(Map<String, List<String>> map, name,
+      CssSelector cssSelector, matchedCallback) {
     if (isBlank(map) || isBlank(name)) {
       return false;
     }
@@ -302,8 +315,8 @@ class SelectorMatcher {
     }
     return result;
   }
-  bool _matchPartial(
-      [Map<String, String> map = null, name, cssSelector, matchedCallback]) {
+  bool _matchPartial(Map<String, SelectorMatcher> map, name,
+      CssSelector cssSelector, matchedCallback) {
     if (isBlank(map) || isBlank(name)) {
       return false;
     }
@@ -333,8 +346,8 @@ class SelectorContext {
   CssSelector notSelector;
   var cbContext;
   SelectorListContext listContext;
-  SelectorContext(
-      CssSelector selector, cbContext, SelectorListContext listContext) {
+  SelectorContext(CssSelector selector, dynamic cbContext,
+      SelectorListContext listContext) {
     this.selector = selector;
     this.notSelector = selector.notSelector;
     this.cbContext = cbContext;
@@ -344,8 +357,7 @@ class SelectorContext {
     var result = true;
     if (isPresent(this.notSelector) &&
         (isBlank(this.listContext) || !this.listContext.alreadyMatched)) {
-      var notMatcher = new SelectorMatcher();
-      notMatcher.addSelectable(this.notSelector, null, null);
+      var notMatcher = SelectorMatcher.createNotMatcher(this.notSelector);
       result = !notMatcher.match(cssSelector, null);
     }
     if (result &&

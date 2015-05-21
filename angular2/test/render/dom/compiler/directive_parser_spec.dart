@@ -138,6 +138,14 @@ main() {
       expect(DOM.getAttribute(results[0].element, "attr_name"))
           .toEqual("attr_val");
     });
+    it("should add CSS classes if \"class\" specified in host element attributes",
+        () {
+      var element = el("<input class=\"foo baz\" some-decor-with-host-attrs>");
+      var results = process(element);
+      expect(DOM.hasClass(results[0].element, "foo")).toBeTruthy();
+      expect(DOM.hasClass(results[0].element, "bar")).toBeTruthy();
+      expect(DOM.hasClass(results[0].element, "baz")).toBeTruthy();
+    });
     it("should read attribute values", () {
       var element = el("<input some-decor-props some-attr=\"someValue\">");
       var results = process(element);
@@ -188,13 +196,20 @@ main() {
         }).toThrowError(
             new RegExp("Only one component directive is allowed per element"));
       });
+      it("should sort the directives and store the component as the first directive",
+          () {
+        var results = process(el("<some-comp some-decor></some-comp>"));
+        expect(annotatedDirectives[results[0].directives[0].directiveIndex].id)
+            .toEqual("someComponent");
+        expect(annotatedDirectives[results[0].directives[1].directiveIndex].id)
+            .toEqual("someDirective");
+      });
     });
   });
 }
-class MockStep extends CompileStep {
+class MockStep implements CompileStep {
   Function processClosure;
-  MockStep(process) : super() {
-    /* super call moved to initializer */;
+  MockStep(process) {
     this.processClosure = process;
   }
   process(
@@ -215,7 +230,9 @@ var someComponent2 = new DirectiveMetadata(
     id: "someComponent2",
     type: DirectiveMetadata.COMPONENT_TYPE);
 var someDirective = new DirectiveMetadata(
-    selector: "[some-decor]", type: DirectiveMetadata.DIRECTIVE_TYPE);
+    selector: "[some-decor]",
+    id: "someDirective",
+    type: DirectiveMetadata.DIRECTIVE_TYPE);
 var someDirectiveIgnoringChildren = new DirectiveMetadata(
     selector: "[some-decor-ignoring-children]",
     compileChildren: false,
@@ -235,7 +252,8 @@ var someDirectiveWithHostProperties = new DirectiveMetadata(
         .createFromStringMap({"dirProp": "hostProperty"}));
 var someDirectiveWithHostAttributes = new DirectiveMetadata(
     selector: "[some-decor-with-host-attrs]",
-    hostAttributes: MapWrapper.createFromStringMap({"attr_name": "attr_val"}));
+    hostAttributes: MapWrapper
+        .createFromStringMap({"attr_name": "attr_val", "class": "foo bar"}));
 var someDirectiveWithEvents = new DirectiveMetadata(
     selector: "[some-decor-events]",
     hostListeners: MapWrapper.createFromStringMap({"click": "doIt()"}));

@@ -33,17 +33,17 @@ import "package:angular2/src/di/annotations_impl.dart"
  */
 class Attribute extends DependencyAnnotation {
   final String attributeName;
-  const Attribute(attributeName)
-      : attributeName = attributeName,
-        super();
+  const Attribute(this.attributeName) : super();
   get token {
-    //Normally one would default a token to a type of an injected value but here
+    // Normally one would default a token to a type of an injected value but here
 
-    //the type of a variable is "string" and we can't use primitive type as a return value
+    // the type of a variable is "string" and we can't use primitive type as a return value
 
-    //so we use instance of Attribute instead. This doesn't matter much in practice as arguments
+    // so we use instance of Attribute instead. This doesn't matter much in practice as arguments
 
-    //with @Attribute annotation are injected by ElementInjector that doesn't take tokens into account.
+    // with @Attribute annotation are injected by ElementInjector that doesn't take tokens into
+
+    // account.
     return this;
   }
 }
@@ -55,8 +55,6 @@ class Attribute extends DependencyAnnotation {
  * @exportedAs angular2/annotations
  */
 class Query extends DependencyAnnotation {
-  final directive;
-  const Query(directive)
-      : directive = directive,
-        super();
+  final dynamic directive;
+  const Query(this.directive) : super();
 }

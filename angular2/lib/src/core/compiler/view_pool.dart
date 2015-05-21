@@ -1,6 +1,6 @@
 library angular2.src.core.compiler.view_pool;
 
-import "package:angular2/src/di/annotations_impl.dart" show Inject;
+import "package:angular2/di.dart" show Inject;
 import "package:angular2/src/facade/collection.dart"
     show ListWrapper, MapWrapper, Map, List;
 import "package:angular2/src/facade/lang.dart" show isPresent, isBlank;

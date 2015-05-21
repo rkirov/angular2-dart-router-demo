@@ -27,6 +27,16 @@ main() {
     expect(parameters[3].length).toBe(0);
   }
   describe("reflection capabilities", () {
+    describe("factory", () {
+      it("should create a factory for a type", () {
+        var f = rc.factory(ClassWithField);
+        expect(f("value").field).toEqual("value");
+      });
+      it("should throw when a constructor has more than 10 args", () {
+        expect(() => rc.factory(ClassWith11Fields))
+            .toThrowError(new RegExp('''has more than 10 arguments'''));
+      });
+    });
     it("can read out class annotations through annotations key", () {
       assertTestClassAnnotations(rc.annotations(TestClass));
     });
@@ -102,6 +112,15 @@ var mockDataForTestClassDec = {
 class TestClassDec {}
 class TestClassTypesOnly {
   TestClassTypesOnly(P1 a, P2 b) {}
+}
+class ClassWithField {
+  var field;
+  ClassWithField(field) {
+    this.field = field;
+  }
+}
+class ClassWith11Fields {
+  ClassWith11Fields(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10) {}
 }
 // Mocking the data stored in global.Reflect as if TS was compiling TestClass above.
 var mockDataForTestClassTypesOnly = {

@@ -10,13 +10,10 @@ import "view_container.dart" show DomViewContainer;
 import "proto_view.dart" show DomProtoView;
 import "../shadow_dom/light_dom.dart" show LightDom;
 import "../shadow_dom/content_tag.dart" show Content;
-import "../../api.dart" show RenderViewRef;
-// TODO(tbosch): enable this again!
+import "../../api.dart" show RenderViewRef, EventDispatcher;
 
-// import {EventDispatcher} from '../../api';
 resolveInternalDomView(RenderViewRef viewRef) {
-  DomViewRef domViewRef = viewRef;
-  return domViewRef._view;
+  return ((viewRef as DomViewRef))._view;
 }
 class DomViewRef extends RenderViewRef {
   DomView _view;
@@ -30,32 +27,24 @@ const NG_BINDING_CLASS = "ng-binding";
  * Const of making objects: http://jsperf.com/instantiate-size-of-object
  */
 class DomView {
-  List boundElements;
-  List boundTextNodes;
-  /// When the view is part of render tree, the DocumentFragment is empty, which is why we need
-
-  /// to keep track of the nodes.
-  List rootNodes;
+  DomProtoView proto;
+  List<dynamic> rootNodes;
+  List<dynamic> boundTextNodes;
+  List<dynamic> boundElements;
+  List<Content> contentTags;
   // TODO(tbosch): move componentChildViews, viewContainers, contentTags, lightDoms into
 
   // a single array with records inside
   List<DomViewContainer> viewContainers;
-  List<Content> contentTags;
   List<LightDom> lightDoms;
   LightDom hostLightDom;
   var shadowRoot;
-  DomProtoView proto;
   bool hydrated;
-  dynamic eventDispatcher;
+  EventDispatcher eventDispatcher;
   List<Function> eventHandlerRemovers;
-  DomView(DomProtoView proto, List rootNodes, List boundTextNodes,
-      List boundElements, List contentTags) {
-    this.proto = proto;
-    this.rootNodes = rootNodes;
-    this.boundTextNodes = boundTextNodes;
-    this.boundElements = boundElements;
+  DomView(this.proto, this.rootNodes, this.boundTextNodes, this.boundElements,
+      this.contentTags) {
     this.viewContainers = ListWrapper.createFixedSize(boundElements.length);
-    this.contentTags = contentTags;
     this.lightDoms = ListWrapper.createFixedSize(boundElements.length);
     this.hostLightDom = null;
     this.hydrated = false;
@@ -100,7 +89,9 @@ class DomView {
 
       // out of action expressions
 
-      // var localValues = this.proto.elementBinders[elementIndex].eventLocals.eval(null, new Locals(null, evalLocals));
+      // var localValues = this.proto.elementBinders[elementIndex].eventLocals.eval(null, new
+
+      // Locals(null, evalLocals));
 
       // this.eventDispatcher.dispatchEvent(elementIndex, eventName, localValues);
       allowDefaultBehavior = this.eventDispatcher.dispatchEvent(

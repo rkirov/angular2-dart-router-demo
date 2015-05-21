@@ -24,12 +24,12 @@ class LightDom {
   // The shadow DOM
   viewModule.DomView shadowDomView;
   // The nodes of the light DOM
-  List nodes;
-  List<_Root> roots;
+  List<dynamic> nodes;
+  List<_Root> _roots;
   LightDom(viewModule.DomView lightDomView, element) {
     this.lightDomView = lightDomView;
     this.nodes = DOM.childNodesAsList(element);
-    this.roots = null;
+    this._roots = null;
     this.shadowDomView = null;
   }
   attachShadowDomView(viewModule.DomView shadowDomView) {
@@ -74,9 +74,9 @@ class LightDom {
   // - nodes from enclosed content tags,
 
   // - plain DOM nodes
-  List expandedDomNodes() {
+  List<dynamic> expandedDomNodes() {
     var res = [];
-    var roots = this._roots();
+    var roots = this._findRoots();
     for (var i = 0; i < roots.length; ++i) {
       var root = roots[i];
       if (isPresent(root.boundElementIndex)) {
@@ -98,10 +98,10 @@ class LightDom {
   // Returns a list of Roots for all the nodes of the light DOM.
 
   // The Root object contains the DOM node and its corresponding boundElementIndex
-  _roots() {
-    if (isPresent(this.roots)) return this.roots;
+  _findRoots() {
+    if (isPresent(this._roots)) return this._roots;
     var boundElements = this.lightDomView.boundElements;
-    this.roots = ListWrapper.map(this.nodes, (n) {
+    this._roots = ListWrapper.map(this.nodes, (n) {
       var boundElementIndex = null;
       for (var i = 0; i < boundElements.length; i++) {
         var boundEl = boundElements[i];
@@ -112,11 +112,11 @@ class LightDom {
       }
       return new _Root(n, boundElementIndex);
     });
-    return this.roots;
+    return this._roots;
   }
 }
 // Projects the light DOM into the shadow DOM
-redistributeNodes(List<Content> contents, List nodes) {
+redistributeNodes(List<Content> contents, List<dynamic> nodes) {
   for (var i = 0; i < contents.length; ++i) {
     var content = contents[i];
     var select = content.select;

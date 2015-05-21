@@ -5,12 +5,7 @@ import "package:angular2/src/facade/collection.dart"
     show List, ListWrapper, SetWrapper;
 import "package:angular2/src/facade/lang.dart"
     show int, NumberWrapper, StringJoiner, StringWrapper, BaseException;
-// HACK: workaround for Traceur behavior.
 
-// It expects all transpiled modules to contain this marker.
-
-// TODO: remove this when we no longer use traceur
-var ___esModule = true;
 const TOKEN_TYPE_CHARACTER = 1;
 const TOKEN_TYPE_IDENTIFIER = 2;
 const TOKEN_TYPE_KEYWORD = 3;
@@ -329,7 +324,7 @@ class _Scanner {
           String hex = input.substring(this.index + 1, this.index + 5);
           try {
             unescapedCode = NumberWrapper.parseInt(hex, 16);
-          } catch (e) {
+          } catch (e, e_stack) {
             this.error('''Invalid unicode escape [\\u${ hex}]''', 0);
           }
           for (int i = 0; i < 5; i++) {

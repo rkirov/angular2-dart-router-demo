@@ -5,12 +5,7 @@ import "package:angular2/src/facade/collection.dart"
 import "package:angular2/src/facade/lang.dart"
     show stringify, looseIdentical, isJsObject;
 import "pipe.dart" show WrappedValue, Pipe, PipeFactory;
-// HACK: workaround for Traceur behavior.
 
-// It expects all transpiled modules to contain this marker.
-
-// TODO: remove this when we no longer use traceur
-var ___esModule = true;
 /**
  * @exportedAs angular2/pipes
  */

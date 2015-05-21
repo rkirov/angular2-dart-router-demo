@@ -17,7 +17,7 @@ import "src/router/router.dart" show Router, RootRouter;
 import "src/router/route_registry.dart" show RouteRegistry;
 import "src/router/pipeline.dart" show Pipeline;
 import "src/router/location.dart" show Location;
-import "src/core/application_tokens.dart" show appComponentAnnotatedTypeToken;
+import "src/core/application_tokens.dart" show appComponentTypeToken;
 import "di.dart" show bind;
 
 List routerInjectables = [
@@ -25,7 +25,7 @@ List routerInjectables = [
   Pipeline,
   BrowserLocation,
   Location,
-  bind(Router).toFactory((registry, pipeline, location, meta) {
-    return new RootRouter(registry, pipeline, location, meta.type);
-  }, [RouteRegistry, Pipeline, Location, appComponentAnnotatedTypeToken])
+  bind(Router).toFactory((registry, pipeline, location, appRoot) {
+    return new RootRouter(registry, pipeline, location, appRoot);
+  }, [RouteRegistry, Pipeline, Location, appComponentTypeToken])
 ];

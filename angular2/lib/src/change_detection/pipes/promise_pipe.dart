@@ -4,12 +4,7 @@ import "package:angular2/src/facade/async.dart" show Future, PromiseWrapper;
 import "package:angular2/src/facade/lang.dart" show isBlank, isPresent;
 import "pipe.dart" show Pipe, WrappedValue;
 import "../change_detector_ref.dart" show ChangeDetectorRef;
-// HACK: workaround for Traceur behavior.
 
-// It expects all transpiled modules to contain this marker.
-
-// TODO: remove this when we no longer use traceur
-var ___esModule = true;
 /**
  * Implements async bindings to Promise.
  *
@@ -25,10 +20,10 @@ var ___esModule = true;
  *   changeDetection: ON_PUSH
  * })
  * @View({
- *  inline: "Task Description {{description|promise}}"
+ *   template: "Task Description {{ description | async }}"
  * })
  * class Task {
- *  description:Promise<string>;
+ *   description:Promise<string>;
  * }
  *
  * ```
@@ -49,7 +44,13 @@ class PromisePipe extends Pipe {
   bool supports(promise) {
     return PromiseWrapper.isPromise(promise);
   }
-  void onDestroy() {}
+  void onDestroy() {
+    if (isPresent(this._sourcePromise)) {
+      this._latestValue = null;
+      this._latestReturnedValue = null;
+      this._sourcePromise = null;
+    }
+  }
   dynamic transform(Future<dynamic> promise) {
     if (isBlank(this._sourcePromise)) {
       this._sourcePromise = promise;

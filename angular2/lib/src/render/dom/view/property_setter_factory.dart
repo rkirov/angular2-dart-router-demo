@@ -18,6 +18,12 @@ import "package:angular2/src/reflection/reflection.dart" show reflector;
 const STYLE_SEPARATOR = ".";
 var propertySettersCache = StringMapWrapper.create();
 var innerHTMLSetterCache;
+const ATTRIBUTE_PREFIX = "attr.";
+var attributeSettersCache = StringMapWrapper.create();
+const CLASS_PREFIX = "class.";
+var classSettersCache = StringMapWrapper.create();
+const STYLE_PREFIX = "style.";
+var styleSettersCache = StringMapWrapper.create();
 Function setterFactory(String property) {
   var setterFn, styleParts, styleSuffix;
   if (StringWrapper.startsWith(property, ATTRIBUTE_PREFIX)) {
@@ -50,8 +56,6 @@ Function setterFactory(String property) {
   }
   return setterFn;
 }
-const ATTRIBUTE_PREFIX = "attr.";
-var attributeSettersCache = StringMapWrapper.create();
 bool _isValidAttributeValue(String attrName, dynamic value) {
   if (attrName == "role") {
     return isString(value);
@@ -82,8 +86,6 @@ Function attributeSetterFactory(String attrName) {
   }
   return setterFn;
 }
-const CLASS_PREFIX = "class.";
-var classSettersCache = StringMapWrapper.create();
 Function classSetterFactory(String className) {
   var setterFn = StringMapWrapper.get(classSettersCache, className);
   var dashCasedClassName;
@@ -100,8 +102,6 @@ Function classSetterFactory(String className) {
   }
   return setterFn;
 }
-const STYLE_PREFIX = "style.";
-var styleSettersCache = StringMapWrapper.create();
 Function styleSetterFactory(String styleName, String styleSuffix) {
   var cacheKey = styleName + styleSuffix;
   var setterFn = StringMapWrapper.get(styleSettersCache, cacheKey);

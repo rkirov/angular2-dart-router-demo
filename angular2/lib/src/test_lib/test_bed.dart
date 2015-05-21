@@ -88,7 +88,7 @@ class TestBed {
     var componentBinding = bind(component).toValue(context);
     return this._injector
         .get(DynamicComponentLoader)
-        .loadIntoNewLocation(componentBinding, null, "#root", this._injector)
+        .loadAsRoot(componentBinding, "#root", this._injector)
         .then((hostComponentRef) {
       return new ViewProxy(hostComponentRef);
     });

@@ -3,7 +3,8 @@ library angular2.test.di.injector_spec;
 import "package:angular2/src/facade/lang.dart" show isBlank, BaseException;
 import "package:angular2/test_lib.dart"
     show describe, ddescribe, it, iit, expect, beforeEach;
-import "package:angular2/di.dart" show Injector, bind, ResolvedBinding;
+import "package:angular2/di.dart"
+    show Injector, bind, ResolvedBinding, Key, forwardRef;
 import "package:angular2/src/di/annotations_impl.dart"
     show Optional, Inject, InjectLazy;
 
@@ -191,7 +192,7 @@ main() {
       try {
         injector.get(Car);
         throw "Must throw";
-      } catch (e) {
+      } catch (e, e_stack) {
         expect(e.message)
             .toContain("Error during instantiation of Engine! (Car -> Engine)");
         expect(e.cause is BaseException).toBeTruthy();
@@ -286,6 +287,28 @@ main() {
           if (isBlank(b)) return;
           expect(b is ResolvedBinding).toBe(true);
         });
+      });
+      it("should resolve forward references", () {
+        var bindings = Injector.resolve([
+          forwardRef(() => Engine),
+          [
+            bind(forwardRef(() => BrokenEngine))
+                .toClass(forwardRef(() => Engine))
+          ],
+          bind(forwardRef(() => String)).toFactory(
+              () => "OK", [forwardRef(() => Engine)]),
+          bind(forwardRef(() => DashboardSoftware)).toAsyncFactory(
+              () => 123, [forwardRef(() => BrokenEngine)])
+        ]);
+        var engineBinding = bindings[Key.get(Engine).id];
+        var brokenEngineBinding = bindings[Key.get(BrokenEngine).id];
+        var stringBinding = bindings[Key.get(String).id];
+        var dashboardSoftwareBinding = bindings[Key.get(DashboardSoftware).id];
+        expect(engineBinding.factory() is Engine).toBe(true);
+        expect(brokenEngineBinding.factory() is Engine).toBe(true);
+        expect(stringBinding.dependencies[0].key).toEqual(Key.get(Engine));
+        expect(dashboardSoftwareBinding.dependencies[0].key)
+            .toEqual(Key.get(BrokenEngine));
       });
     });
   });

@@ -27,10 +27,9 @@ import "../util.dart" show dashCaseToCamelCase;
  * as we want to do locate elements with bindings using `getElementsByClassName` later on,
  * which should not descend into the nested view.
  */
-class ViewSplitter extends CompileStep {
+class ViewSplitter implements CompileStep {
   Parser _parser;
-  ViewSplitter(Parser parser) : super() {
-    /* super call moved to initializer */;
+  ViewSplitter(Parser parser) {
     this._parser = parser;
   }
   process(
@@ -38,7 +37,9 @@ class ViewSplitter extends CompileStep {
     var attrs = current.attrs();
     var templateBindings = MapWrapper.get(attrs, "template");
     var hasTemplateBinding = isPresent(templateBindings);
-    // look for template shortcuts such as *if="condition" and treat them as template="if condition"
+    // look for template shortcuts such as *ng-if="condition" and treat them as template="if
+
+    // condition"
     MapWrapper.forEach(attrs, (attrValue, attrName) {
       if (StringWrapper.startsWith(attrName, "*")) {
         var key = StringWrapper.substring(attrName, 1);

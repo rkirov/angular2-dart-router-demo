@@ -1,6 +1,6 @@
 library angular2.src.render.dom.shadow_dom.style_inliner;
 
-import "package:angular2/src/di/annotations_impl.dart" show Injectable;
+import "package:angular2/di.dart" show Injectable;
 import "package:angular2/src/services/xhr.dart" show XHR;
 import "package:angular2/src/facade/collection.dart" show ListWrapper;
 import "package:angular2/src/services/url_resolver.dart" show UrlResolver;
@@ -40,14 +40,12 @@ class StyleInliner {
    * @param {string} baseUrl
    * @returns {*} a Promise<string> when @import rules are present, a string otherwise
    */
-
-  // TODO(vicb): Union types: returns either a Promise<string> or a string
-
-  // TODO(vicb): commented out @import rules should not be inlined
-  inlineImports(String cssText, String baseUrl) {
+  dynamic /* Future < String > | String */ inlineImports(
+      String cssText, String baseUrl) {
     return this._inlineImports(cssText, baseUrl, []);
   }
-  _inlineImports(String cssText, String baseUrl, List<String> inlinedUrls) {
+  dynamic /* Future < String > | String */ _inlineImports(
+      String cssText, String baseUrl, List<String> inlinedUrls) {
     var partIndex = 0;
     var parts = StringWrapper.split(cssText, _importRe);
     if (identical(parts.length, 1)) {
@@ -76,12 +74,12 @@ class StyleInliner {
         promise = PromiseWrapper.resolve(prefix);
       } else {
         ListWrapper.push(inlinedUrls, url);
-        promise = PromiseWrapper.then(this._xhr.get(url), (css) {
+        promise = PromiseWrapper.then(this._xhr.get(url), (rawCss) {
           // resolve nested @import rules
-          css = this._inlineImports(css, url, inlinedUrls);
-          if (PromiseWrapper.isPromise(css)) {
+          var inlinedCss = this._inlineImports(rawCss, url, inlinedUrls);
+          if (PromiseWrapper.isPromise(inlinedCss)) {
             // wait until nested @import are inlined
-            return css.then((css) {
+            return ((inlinedCss as Future<String>)).then((css) {
               return prefix +
                   this._transformImportedCss(css, mediaQuery, url) +
                   "\n";
@@ -89,7 +87,8 @@ class StyleInliner {
           } else {
             // there are no nested @import, return the css
             return prefix +
-                this._transformImportedCss(css, mediaQuery, url) +
+                this._transformImportedCss(
+                    (inlinedCss as String), mediaQuery, url) +
                 "\n";
           }
         }, (error) => '''/* failed to import ${ url} */

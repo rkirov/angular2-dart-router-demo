@@ -16,7 +16,7 @@ import "package:angular2/test_lib.dart"
 import "package:angular2/src/test_lib/test_bed.dart" show TestBed;
 import "package:angular2/src/core/compiler/query_list.dart" show QueryList;
 import "package:angular2/src/core/annotations_impl/di.dart" show Query;
-import "package:angular2/angular2.dart" show If, For;
+import "package:angular2/angular2.dart" show NgIf, NgFor;
 import "package:angular2/src/core/annotations_impl/annotations.dart"
     show Component, Directive;
 import "package:angular2/src/core/annotations_impl/view.dart" show View;
@@ -43,7 +43,7 @@ main() {
       AsyncTestCompleter
     ], (tb, async) {
       var template = "<div text=\"1\"></div>" +
-          "<needs-query text=\"2\"><div *if=\"shouldShow\" [text]=\"'3'\"></div></needs-query>" +
+          "<needs-query text=\"2\"><div *ng-if=\"shouldShow\" [text]=\"'3'\"></div></needs-query>" +
           "<div text=\"4\"></div>";
       tb.createView(MyComp, html: template).then((view) {
         view.detectChanges();
@@ -61,7 +61,7 @@ main() {
       AsyncTestCompleter
     ], (tb, async) {
       var template = "<div text=\"1\"></div>" +
-          "<needs-query text=\"2\"><div *for=\"var i of list\" [text]=\"i\"></div></needs-query>" +
+          "<needs-query text=\"2\"><div *ng-for=\"var i of list\" [text]=\"i\"></div></needs-query>" +
           "<div text=\"4\"></div>";
       tb.createView(MyComp, html: template).then((view) {
         view.detectChanges();
@@ -78,8 +78,8 @@ main() {
 }
 @Component(selector: "needs-query")
 @View(
-    directives: const [For],
-    template: "<div *for=\"var dir of query\">{{dir.text}}|</div>")
+    directives: const [NgFor],
+    template: "<div *ng-for=\"var dir of query\">{{dir.text}}|</div>")
 class NeedsQuery {
   QueryList query;
   NeedsQuery(@Query(TextDirective) QueryList query) {
@@ -93,7 +93,7 @@ class TextDirective {
   TextDirective() {}
 }
 @Component(selector: "my-comp")
-@View(directives: const [NeedsQuery, TextDirective, If, For])
+@View(directives: const [NeedsQuery, TextDirective, NgIf, NgFor])
 class MyComp {
   bool shouldShow;
   var list;

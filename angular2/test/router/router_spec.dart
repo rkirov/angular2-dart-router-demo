@@ -20,8 +20,8 @@ import "package:angular2/src/router/router_outlet.dart" show RouterOutlet;
 import "package:angular2/src/mock/location_mock.dart" show SpyLocation;
 import "package:angular2/src/router/location.dart" show Location;
 import "package:angular2/src/router/route_registry.dart" show RouteRegistry;
-import "package:angular2/src/core/compiler/directive_metadata_reader.dart"
-    show DirectiveMetadataReader;
+import "package:angular2/src/core/compiler/directive_resolver.dart"
+    show DirectiveResolver;
 import "package:angular2/di.dart" show bind;
 
 main() {
@@ -30,7 +30,7 @@ main() {
     beforeEachBindings(() => [
       Pipeline,
       RouteRegistry,
-      DirectiveMetadataReader,
+      DirectiveResolver,
       bind(Location).toClass(SpyLocation),
       bind(Router).toFactory((registry, pipeline, location) {
         return new RootRouter(registry, pipeline, location, AppCmp);
@@ -42,7 +42,7 @@ main() {
     }));
     it("should navigate based on the initial URL state", inject(
         [AsyncTestCompleter], (async) {
-      var outlet = makeDummyRef();
+      var outlet = makeDummyOutlet();
       router
           .config({"path": "/", "component": "Index"})
           .then((_) => router.registerOutlet(outlet))
@@ -54,7 +54,7 @@ main() {
     }));
     it("should activate viewports and update URL on navigate", inject(
         [AsyncTestCompleter], (async) {
-      var outlet = makeDummyRef();
+      var outlet = makeDummyOutlet();
       router.registerOutlet(outlet).then((_) {
         return router.config({"path": "/a", "component": "A"});
       }).then((_) => router.navigate("/a")).then((_) {
@@ -65,7 +65,7 @@ main() {
     }));
     it("should navigate after being configured", inject([AsyncTestCompleter],
         (async) {
-      var outlet = makeDummyRef();
+      var outlet = makeDummyOutlet();
       router
           .registerOutlet(outlet)
           .then((_) => router.navigate("/a"))
@@ -80,13 +80,13 @@ main() {
   });
 }
 @proxy
-class DummyOutletRef extends SpyObject implements RouterOutlet {
+class DummyOutlet extends SpyObject implements RouterOutlet {
   noSuchMethod(m) {
     return super.noSuchMethod(m);
   }
 }
-makeDummyRef() {
-  var ref = new DummyOutletRef();
+makeDummyOutlet() {
+  var ref = new DummyOutlet();
   ref.spy("activate").andCallFake((_) => PromiseWrapper.resolve(true));
   ref.spy("canActivate").andCallFake((_) => PromiseWrapper.resolve(true));
   ref.spy("canDeactivate").andCallFake((_) => PromiseWrapper.resolve(true));

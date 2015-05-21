@@ -6,7 +6,8 @@ export 'dart:async' show Future, Stream, StreamController, StreamSubscription;
 class PromiseWrapper {
   static Future resolve(obj) => new Future.value(obj);
 
-  static Future reject(obj) => new Future.error(obj);
+  static Future reject(obj, stackTrace) => new Future.error(obj,
+      stackTrace != null ? stackTrace : obj is Error ? obj.stackTrace : null);
 
   static Future<List> all(List<Future> promises) => Future.wait(promises);
 
@@ -21,14 +22,28 @@ class PromiseWrapper {
     return promise.catchError(onError);
   }
 
-  static _Completer completer() => new _Completer(new Completer());
-
-  static void setTimeout(fn(), int millis) {
-    new Timer(new Duration(milliseconds: millis), fn);
-  }
+  static CompleterWrapper completer() => new CompleterWrapper(new Completer());
 
   static bool isPromise(maybePromise) {
     return maybePromise is Future;
+  }
+}
+
+class TimerWrapper {
+  static Timer setTimeout(fn(), int millis) =>
+      new Timer(new Duration(milliseconds: millis), fn);
+  static void clearTimeout(Timer timer) {
+    timer.cancel();
+  }
+
+  static Timer setInterval(fn(), int millis) {
+    var interval = new Duration(milliseconds: millis);
+    return new Timer.periodic(interval, (Timer timer) {
+      fn();
+    });
+  }
+  static void clearInterval(Timer timer) {
+    timer.cancel();
   }
 }
 
@@ -86,10 +101,10 @@ class EventEmitter extends Stream {
   }
 }
 
-class _Completer {
+class CompleterWrapper {
   final Completer c;
 
-  _Completer(this.c);
+  CompleterWrapper(this.c);
 
   Future get promise => c.future;
 
@@ -97,7 +112,10 @@ class _Completer {
     c.complete(v);
   }
 
-  void reject(v) {
-    c.completeError(v);
+  void reject(error, stack) {
+    if (stack == null && error is Error) {
+      stack = error.stackTrace;
+    }
+    c.completeError(error, stack);
   }
 }

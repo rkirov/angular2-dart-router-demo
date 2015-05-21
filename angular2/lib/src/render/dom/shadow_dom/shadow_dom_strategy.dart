@@ -21,7 +21,7 @@ class ShadowDomStrategy {
   /**
    * An optional step that can modify the template style elements.
    */
-  Future processStyleElement(
+  Future<dynamic> processStyleElement(
       String hostComponentId, String templateUrl, styleElement) {
     return null;
   }

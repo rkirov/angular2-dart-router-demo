@@ -11,14 +11,19 @@ class SpyLocation extends SpyObject implements Location {
   List<String> urlChanges;
   String _path;
   EventEmitter _subject;
+  String _baseHref;
   SpyLocation() : super() {
     /* super call moved to initializer */;
     this._path = "/";
     this.urlChanges = ListWrapper.create();
     this._subject = new EventEmitter();
+    this._baseHref = "";
   }
   setInitialPath(String url) {
     this._path = url;
+  }
+  setBaseHref(String url) {
+    this._baseHref = url;
   }
   String path() {
     return this._path;
@@ -26,8 +31,12 @@ class SpyLocation extends SpyObject implements Location {
   simulateUrlPop(String pathname) {
     ObservableWrapper.callNext(this._subject, {"url": pathname});
   }
+  normalizeAbsolutely(url) {
+    return this._baseHref + url;
+  }
   go(String url) {
-    if (identical(this._path, url)) {
+    url = this.normalizeAbsolutely(url);
+    if (this._path == url) {
       return;
     }
     this._path = url;

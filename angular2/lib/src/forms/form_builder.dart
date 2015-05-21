@@ -16,7 +16,7 @@ import "model.dart" as modelModule;
  *
  * @Component({
  *   selector: 'login-comp',
- *   injectables: [
+ *   appInjector: [
  *     FormBuilder
  *   ]
  * })

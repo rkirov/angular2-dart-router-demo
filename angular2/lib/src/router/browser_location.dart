@@ -11,22 +11,22 @@ class BrowserLocation {
     this._history = DOM.getHistory();
     this._baseHref = DOM.getBaseHref();
   }
-  onPopState(fn) {
+  void onPopState(Function fn) {
     DOM.getGlobalEventTarget("window").addEventListener("popstate", fn, false);
   }
-  getBaseHref() {
+  String getBaseHref() {
     return this._baseHref;
   }
-  path() {
+  String path() {
     return this._location.pathname;
   }
   pushState(dynamic state, String title, String url) {
     this._history.pushState(state, title, url);
   }
-  forward() {
+  void forward() {
     this._history.forward();
   }
-  back() {
+  void back() {
     this._history.back();
   }
 }

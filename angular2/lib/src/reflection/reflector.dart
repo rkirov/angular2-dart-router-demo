@@ -6,17 +6,12 @@ import "package:angular2/src/facade/collection.dart"
     show List, ListWrapper, Map, MapWrapper, StringMapWrapper;
 import "types.dart" show SetterFn, GetterFn, MethodFn;
 export "types.dart" show SetterFn, GetterFn, MethodFn;
-// HACK: workaround for Traceur behavior.
 
-// It expects all transpiled modules to contain this marker.
-
-// TODO: remove this when we no longer use traceur
-var ___esModule = true;
 class Reflector {
-  Map<dynamic, dynamic> _typeInfo;
-  Map<dynamic, dynamic> _getters;
-  Map<dynamic, dynamic> _setters;
-  Map<dynamic, dynamic> _methods;
+  Map<Type, dynamic> _typeInfo;
+  Map<String, GetterFn> _getters;
+  Map<String, SetterFn> _setters;
+  Map<String, MethodFn> _methods;
   dynamic reflectionCapabilities;
   Reflector(reflectionCapabilities) {
     this._typeInfo = MapWrapper.create();
@@ -25,16 +20,16 @@ class Reflector {
     this._methods = MapWrapper.create();
     this.reflectionCapabilities = reflectionCapabilities;
   }
-  registerType(type, typeInfo) {
+  void registerType(Type type, Map<Type, dynamic> typeInfo) {
     MapWrapper.set(this._typeInfo, type, typeInfo);
   }
-  registerGetters(getters) {
+  void registerGetters(Map<String, GetterFn> getters) {
     _mergeMaps(this._getters, getters);
   }
-  registerSetters(setters) {
+  void registerSetters(Map<String, SetterFn> setters) {
     _mergeMaps(this._setters, setters);
   }
-  registerMethods(methods) {
+  void registerMethods(Map<String, MethodFn> methods) {
     _mergeMaps(this._methods, methods);
   }
   Function factory(Type type) {
@@ -80,6 +75,6 @@ class Reflector {
     }
   }
 }
-_mergeMaps(Map<dynamic, dynamic> target, config) {
+void _mergeMaps(Map<dynamic, dynamic> target, Map<String, Function> config) {
   StringMapWrapper.forEach(config, (v, k) => MapWrapper.set(target, k, v));
 }
